@@ -1,27 +1,12 @@
 services:
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
   backend:
     build:
       context: ./backend
-    # Order matters: later files override earlier.
-    # /.env  → POSTGRES_*, ports
-    # backend/.env → SECRET_KEY, MISTRAL_*, CORS_ORIGINS
     env_file:
       - .env
       - backend/.env
     environment:
-      POSTGRES_HOST: db
-    depends_on:
-      - db
-
+      POSTGRES_HOST: ${POSTGRES_HOST}
   frontend:
     build:
       context: ./frontend
@@ -49,5 +34,4 @@ services:
       - ./promtail.yml:/etc/promtail/config.yml
 
 volumes:
-  postgres_data:
   grafana_data:
