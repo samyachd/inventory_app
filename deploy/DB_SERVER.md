@@ -174,6 +174,9 @@ mkdir -p "$BACKUP_DIR"/{last,daily,weekly,monthly}
 # Full dump (schema + data, --clean lets restore drop objects first)
 pg_dump -U "$DB_USER" "$DB_NAME" --clean --if-exists | gzip -9 > "$DUMP"
 
+# Verify the dump is not corrupt before rotating
+gunzip -t "$DUMP" || { echo "ERROR: dump is corrupt, aborting rotation" >&2; exit 1; }
+
 # Daily copy (keep last 7)
 cp "$DUMP" "$BACKUP_DIR/daily/${DB_NAME}-${DATE}.sql.gz"
 ls -t "$BACKUP_DIR/daily/" | tail -n +8 | xargs -r -I{} rm "$BACKUP_DIR/daily/{}"

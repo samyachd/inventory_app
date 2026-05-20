@@ -2,6 +2,7 @@
 
 Everything you need to deploy, operate, and troubleshoot the inventory app
 in production. For data-restore specifics see [deploy/RESTORE.md](deploy/RESTORE.md).
+For the dedicated database server setup see [deploy/DB_SERVER.md](deploy/DB_SERVER.md).
 
 ---
 
