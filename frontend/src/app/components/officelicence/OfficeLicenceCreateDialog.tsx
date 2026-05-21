@@ -73,8 +73,8 @@ export function OfficeLicenceCreateDialog({ documents, disabled }: Props) {
             fixedOwner={{ office_licence_id: createdLicenceId }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
-            onSubmit={(data) => {
-              createDoc.mutate(data, { onSuccess: reset });
+            onSubmit={(items) => {
+              createDoc.mutate(items[0], { onSuccess: reset });
             }}
           />
         ) : (

@@ -74,8 +74,8 @@ export function EcranEditDialog({
             fixedOwner={{ ecran_id: ecran.id }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
-            onSubmit={(data) => {
-              createDoc.mutate(data, { onSuccess: close });
+            onSubmit={(items) => {
+              createDoc.mutate(items[0], { onSuccess: close });
             }}
           />
         ) : (

@@ -45,9 +45,7 @@ export interface Ordinateur extends BaseEquipment {
   ip_address: string | null;
   mac_ethernet: string | null;
   mac_wifi: string | null;
-  clef_wifi: boolean | null;
   lecteur_cd: boolean | null;
-  casque: boolean | null;
   absolute_dell: boolean | null;
   watt: number | null;
 }
@@ -84,6 +82,8 @@ export interface Agent {
   nom: string;
   email: string | null;
   telephone: string | null;
+  clef_wifi: boolean | null;
+  casque: boolean | null;
   created_at: string;
   updated_at: string | null;
 }

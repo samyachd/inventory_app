@@ -68,8 +68,8 @@ export function OfficeLicenceEditDialog({
             fixedOwner={{ office_licence_id: licence.id }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
-            onSubmit={(data) => {
-              createDoc.mutate(data, { onSuccess: close });
+            onSubmit={(items) => {
+              createDoc.mutate(items[0], { onSuccess: close });
             }}
           />
         ) : (

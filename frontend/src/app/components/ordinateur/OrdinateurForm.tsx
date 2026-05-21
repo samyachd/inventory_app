@@ -10,10 +10,8 @@ import { OcrImportButton } from "../OcrImportButton";
 const SEL = "w-full border rounded-md px-3 py-2 text-sm bg-background";
 
 type BoolStr = "" | "true" | "false";
-type FormValues = Omit<OrdinateurCreatePayload, "clef_wifi" | "lecteur_cd" | "casque" | "absolute_dell"> & {
-  clef_wifi: BoolStr;
+type FormValues = Omit<OrdinateurCreatePayload, "lecteur_cd" | "absolute_dell"> & {
   lecteur_cd: BoolStr;
-  casque: BoolStr;
   absolute_dell: BoolStr;
 };
 
@@ -55,9 +53,7 @@ export function OrdinateurForm({
       ip_address: defaultValues?.ip_address ?? "",
       mac_ethernet: defaultValues?.mac_ethernet ?? "",
       mac_wifi: defaultValues?.mac_wifi ?? "",
-      clef_wifi: boolToStr(defaultValues?.clef_wifi),
       lecteur_cd: boolToStr(defaultValues?.lecteur_cd),
-      casque: boolToStr(defaultValues?.casque),
       absolute_dell: boolToStr(defaultValues?.absolute_dell),
       watt: defaultValues?.watt ?? null,
       agent_id: defaultValues?.agent_id ?? null,
@@ -80,9 +76,7 @@ export function OrdinateurForm({
       ip_address: values.ip_address || null,
       mac_ethernet: values.mac_ethernet || null,
       mac_wifi: values.mac_wifi || null,
-      clef_wifi: strToBool(values.clef_wifi),
       lecteur_cd: strToBool(values.lecteur_cd),
-      casque: strToBool(values.casque),
       absolute_dell: strToBool(values.absolute_dell),
     });
   };
@@ -182,26 +176,10 @@ export function OrdinateurForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
-          <div>
-            <Label htmlFor="clef_wifi">Clef WiFi</Label>
-            <select id="clef_wifi" className={SEL} {...register("clef_wifi")}>
-              <option value="">—</option>
-              <option value="true">Oui</option>
-              <option value="false">Non</option>
-            </select>
-          </div>
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="lecteur_cd">Lecteur CD</Label>
             <select id="lecteur_cd" className={SEL} {...register("lecteur_cd")}>
-              <option value="">—</option>
-              <option value="true">Oui</option>
-              <option value="false">Non</option>
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="casque">Casque</Label>
-            <select id="casque" className={SEL} {...register("casque")}>
               <option value="">—</option>
               <option value="true">Oui</option>
               <option value="false">Non</option>

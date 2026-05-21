@@ -22,6 +22,7 @@ interface Props {
 
 export function DocumentCreateDialog({ ordinateurs, ecrans, licences, disabled }: Props) {
   const [open, setOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const createMutation = useCreateDocument();
 
   return (
@@ -32,23 +33,31 @@ export function DocumentCreateDialog({ ordinateurs, ecrans, licences, disabled }
           Nouveau document
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Nouveau document</DialogTitle>
           <DialogDescription>
-            Renseignez les informations du document. Vous pouvez le lier à un
-            ordinateur, un écran ou une licence (au plus un).
+            Renseignez les informations du document et sélectionnez les
+            équipements à lier. Un document sera créé pour chaque équipement
+            sélectionné.
           </DialogDescription>
         </DialogHeader>
         <DocumentForm
           ordinateurs={ordinateurs}
           ecrans={ecrans}
           licences={licences}
-          isPending={createMutation.isPending}
-          onSubmit={(data) => {
-            createMutation.mutate(data, {
-              onSuccess: () => setOpen(false),
-            });
+          multiSelect={true}
+          isPending={isPending}
+          onSubmit={async (items) => {
+            setIsPending(true);
+            try {
+              for (const item of items) {
+                await createMutation.mutateAsync(item);
+              }
+              setOpen(false);
+            } finally {
+              setIsPending(false);
+            }
           }}
         />
       </DialogContent>

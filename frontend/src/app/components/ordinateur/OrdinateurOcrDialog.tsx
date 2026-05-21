@@ -67,7 +67,7 @@ export function OrdinateurOcrDialog({ agents, documents }: Props) {
             fixedOwner={{ ordinateur_id: createdOrdiId }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
-            onSubmit={(data) => createDoc.mutate(data, { onSuccess: reset })}
+            onSubmit={(items) => createDoc.mutate(items[0], { onSuccess: reset })}
           />
         ) : (
           <OrdinateurForm

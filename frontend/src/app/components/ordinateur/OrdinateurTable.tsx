@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Agent, Document, Ordinateur } from "@/app/types";
+import type { Agent, Document, OfficeLicence, Ordinateur } from "@/app/types";
 import { useOrdinateurColumns } from "@/app/hooks/useOrdinateurColumns";
 import { useDeleteOrdinateur } from "@/app/hooks/useOrdinateur";
 import { OrdinateurCreateDialog } from "./OrdinateurCreateDialog";
@@ -12,14 +12,15 @@ interface Props {
   data: Ordinateur[];
   agents: Agent[];
   documents: Document[];
+  licences: OfficeLicence[];
 }
 
-export function OrdinateurTable({ data, agents, documents }: Props) {
+export function OrdinateurTable({ data, agents, documents, licences }: Props) {
   const [editingOrdinateur, setEditingOrdinateur] = useState<Ordinateur | null>(null);
   const deleteOrdinateur = useDeleteOrdinateur();
   const canWrite = useAuth((s) => s.role) !== "read";
 
-  const columns = useOrdinateurColumns({ agents, documents });
+  const columns = useOrdinateurColumns({ agents, documents, licences });
 
   return (
     <>

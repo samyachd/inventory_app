@@ -36,6 +36,8 @@ export function AgentEditDialog({ agent, open, onOpenChange }: Props) {
             nom: agent.nom,
             email: agent.email,
             telephone: agent.telephone,
+            clef_wifi: agent.clef_wifi,
+            casque: agent.casque,
           }}
           onSubmit={(data) => {
             updateMutation.mutate(

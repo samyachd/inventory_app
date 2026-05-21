@@ -21,9 +21,17 @@ type OrdDraft = {
   fournisseur: string;
   date_achat: string;
   fin_garantie: string;
+  proprietaire: string;
   service: string;
   batiment: string;
+  nom_reseau: string;
   ip_address: string;
+  mac_ethernet: string;
+  mac_wifi: string;
+  tag_chargeur: string;
+  watt: string;
+  lecteur_cd: boolean | null;
+  absolute_dell: boolean | null;
   agent_id: string;
 };
 
@@ -32,9 +40,11 @@ type EcrDraft = {
   tag: string;
   marque: string;
   taille: string;
+  slot: string;
   fournisseur: string;
   date_achat: string;
   fin_garantie: string;
+  proprietaire: string;
   service: string;
   batiment: string;
   agent_id: string;
@@ -46,13 +56,15 @@ const uid = () => Math.random().toString(36).slice(2);
 const emptyOrd = (): OrdDraft => ({
   _id: uid(), tag: "", marque: "", type_equipement: "PC FIXE",
   os: "", ram: "", fournisseur: "", date_achat: "", fin_garantie: "",
-  service: "", batiment: "", ip_address: "", agent_id: "",
+  proprietaire: "", service: "", batiment: "", nom_reseau: "",
+  ip_address: "", mac_ethernet: "", mac_wifi: "", tag_chargeur: "",
+  watt: "", lecteur_cd: null, absolute_dell: null, agent_id: "",
 });
 
 const emptyEcr = (): EcrDraft => ({
-  _id: uid(), tag: "", marque: "", taille: "", fournisseur: "",
-  date_achat: "", fin_garantie: "", service: "", batiment: "",
-  agent_id: "", ordinateur_id: "",
+  _id: uid(), tag: "", marque: "", taille: "", slot: "", fournisseur: "",
+  date_achat: "", fin_garantie: "", proprietaire: "", service: "",
+  batiment: "", agent_id: "", ordinateur_id: "",
 });
 
 function ocrToRows(items: OcrExtractedData[]): { ords: OrdDraft[]; ecrs: EcrDraft[] } {
@@ -66,17 +78,31 @@ function ocrToRows(items: OcrExtractedData[]): { ords: OrdDraft[]; ecrs: EcrDraf
       fournisseur: ocr.fournisseur ?? "",
       date_achat: ocr.date_achat ?? "",
       fin_garantie: ocr.fin_garantie ?? "",
-      service: "",
-      batiment: "",
-      agent_id: "",
+      proprietaire: ocr.proprietaire ?? "",
+      service: ocr.service ?? "",
+      batiment: ocr.batiment ?? "",
     };
     if (ocr.type_equipement === "ECRAN") {
-      ecrs.push({ ...emptyEcr(), ...common, taille: "", ordinateur_id: "" });
+      ecrs.push({
+        ...emptyEcr(), ...common,
+        taille: ocr.taille != null ? String(ocr.taille) : "",
+        slot: ocr.slot != null ? String(ocr.slot) : "",
+        ordinateur_id: "",
+      });
     } else {
       ords.push({
         ...emptyOrd(), ...common,
         type_equipement: ocr.type_equipement ?? "PC FIXE",
-        os: "", ram: "", ip_address: "",
+        ram: ocr.ram ?? "",
+        os: ocr.os ?? "",
+        nom_reseau: ocr.nom_reseau ?? "",
+        ip_address: ocr.ip_address ?? "",
+        mac_ethernet: ocr.mac_ethernet ?? "",
+        mac_wifi: ocr.mac_wifi ?? "",
+        tag_chargeur: ocr.tag_chargeur ?? "",
+        watt: ocr.watt != null ? String(ocr.watt) : "",
+        lecteur_cd: ocr.lecteur_cd ?? null,
+        absolute_dell: ocr.absolute_dell ?? null,
       });
     }
   }
@@ -346,18 +372,18 @@ export function Ocr() {
           fournisseur: r.fournisseur || null,
           date_achat: r.date_achat || null,
           fin_garantie: r.fin_garantie || null,
+          proprietaire: r.proprietaire || null,
           service: r.service || null,
           batiment: r.batiment || null,
+          nom_reseau: r.nom_reseau || null,
           ip_address: r.ip_address || null,
+          mac_ethernet: r.mac_ethernet || null,
+          mac_wifi: r.mac_wifi || null,
+          tag_chargeur: r.tag_chargeur || null,
+          watt: r.watt ? Number(r.watt) : null,
+          lecteur_cd: r.lecteur_cd,
+          absolute_dell: r.absolute_dell,
           agent_id: r.agent_id ? Number(r.agent_id) : null,
-          nom_reseau: null,
-          mac_ethernet: null,
-          mac_wifi: null,
-          clef_wifi: null,
-          lecteur_cd: null,
-          casque: null,
-          absolute_dell: null,
-          watt: null,
         });
       } catch {
         errors++;
@@ -370,10 +396,11 @@ export function Ocr() {
           tag: r.tag || null,
           marque: r.marque || null,
           taille: r.taille ? Number(r.taille) : null,
-          slot: null,
+          slot: r.slot ? Number(r.slot) : null,
           fournisseur: r.fournisseur || null,
           date_achat: r.date_achat || null,
           fin_garantie: r.fin_garantie || null,
+          proprietaire: r.proprietaire || null,
           service: r.service || null,
           batiment: r.batiment || null,
           agent_id: r.agent_id ? Number(r.agent_id) : null,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Agent } from "@/app/types";
+import type { Agent, Ecran, Ordinateur } from "@/app/types";
 import { useAgentColumns } from "@/app/hooks/useAgentColumns";
 import { useDeleteAgent } from "@/app/hooks/useAgent";
 import { AgentCreateDialog } from "./AgentCreateDialog";
@@ -9,14 +9,16 @@ import { useAuth } from "@/app/hooks/useAuth";
 
 interface Props {
   data: Agent[];
+  ordinateurs: Ordinateur[];
+  ecrans: Ecran[];
 }
 
-export function AgentTable({ data }: Props) {
+export function AgentTable({ data, ordinateurs, ecrans }: Props) {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const deleteAgent = useDeleteAgent();
   const canWrite = useAuth((s) => s.role) !== "read";
 
-  const columns = useAgentColumns();
+  const columns = useAgentColumns({ ordinateurs, ecrans });
 
   return (
     <>

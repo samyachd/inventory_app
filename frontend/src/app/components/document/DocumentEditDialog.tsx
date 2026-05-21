@@ -55,9 +55,9 @@ export function DocumentEditDialog({
             ecran_id: document.ecran_id,
             office_licence_id: document.office_licence_id,
           }}
-          onSubmit={(data) => {
+          onSubmit={(items) => {
             updateMutation.mutate(
-              { id: document.id, data },
+              { id: document.id, data: items[0] },
               { onSuccess: () => onOpenChange(false) }
             );
           }}

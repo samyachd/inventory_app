@@ -23,9 +23,7 @@ class Ordinateur(BaseEquipement):
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     mac_ethernet: Mapped[str | None] = mapped_column(String(17), nullable=True, unique=True)
     mac_wifi: Mapped[str | None] = mapped_column(String(17), nullable=True, unique=True)
-    clef_wifi: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     lecteur_cd: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    casque: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     absolute_dell: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     watt: Mapped[int | None] = mapped_column(Integer, nullable=True)
 

@@ -50,6 +50,7 @@ export function Inventaire() {
               data={data.ordinateurs}
               agents={data.agents}
               documents={data.documents}
+              licences={data.licences}
             />
           )}
         </TabsContent>
@@ -82,7 +83,13 @@ export function Inventaire() {
           )}
         </TabsContent>
         <TabsContent value="agents" className="mt-6">
-          {tab === "agents" && <AgentTable data={data.agents} />}
+          {tab === "agents" && (
+            <AgentTable
+              data={data.agents}
+              ordinateurs={data.ordinateurs}
+              ecrans={data.ecrans}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>

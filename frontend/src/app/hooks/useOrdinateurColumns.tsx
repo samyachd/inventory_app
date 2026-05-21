@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import type { Agent, Document, DocumentType, Ordinateur } from "@/app/types";
+import type { Agent, Document, DocumentType, OfficeLicence, Ordinateur } from "@/app/types";
 import { SortableHeader } from "../components/DataTable/SortableHeader";
 import { DocumentLink } from "../components/DocumentLink";
 import { QrDownloadButton } from "../components/QrDownloadButton";
@@ -8,6 +8,7 @@ import { QrDownloadButton } from "../components/QrDownloadButton";
 interface Options {
   agents: Agent[];
   documents: Document[];
+  licences: OfficeLicence[];
 }
 
 type DocsByOwner = Map<number, Map<DocumentType, Document>>;
@@ -46,10 +47,16 @@ const fmt = {
 export function useOrdinateurColumns({
   agents,
   documents,
+  licences,
 }: Options): ColumnDef<Ordinateur>[] {
   const agentById = useMemo(
     () => new Map(agents.map((a) => [a.id, a])),
     [agents]
+  );
+
+  const licenceById = useMemo(
+    () => new Map(licences.map((l) => [l.id, l])),
+    [licences]
   );
 
   const docsByOrdinateur = useMemo(
@@ -158,25 +165,11 @@ export function useOrdinateurColumns({
       cell: ({ row }) => fmt.str(row.original.mac_wifi),
     },
     {
-      accessorKey: "clef_wifi",
-      header: ({ column }) => (
-        <SortableHeader column={column} label="Clef WiFi" />
-      ),
-      cell: ({ row }) => fmt.bool(row.original.clef_wifi),
-    },
-    {
       accessorKey: "lecteur_cd",
       header: ({ column }) => (
         <SortableHeader column={column} label="Lecteur CD" />
       ),
       cell: ({ row }) => fmt.bool(row.original.lecteur_cd),
-    },
-    {
-      accessorKey: "casque",
-      header: ({ column }) => (
-        <SortableHeader column={column} label="Casque" />
-      ),
-      cell: ({ row }) => fmt.bool(row.original.casque),
     },
     {
       accessorKey: "absolute_dell",
@@ -190,6 +183,30 @@ export function useOrdinateurColumns({
       header: ({ column }) => <SortableHeader column={column} label="Watt" />,
       cell: ({ row }) =>
         row.original.watt != null ? `${row.original.watt} W` : "—",
+    },
+    {
+      accessorKey: "fournisseur",
+      header: ({ column }) => (
+        <SortableHeader column={column} label="Fournisseur" />
+      ),
+      cell: ({ row }) => fmt.str(row.original.fournisseur),
+    },
+    {
+      accessorKey: "tag_chargeur",
+      header: ({ column }) => (
+        <SortableHeader column={column} label="Tag chargeur" />
+      ),
+      cell: ({ row }) => fmt.str(row.original.tag_chargeur),
+    },
+    {
+      id: "licence",
+      header: "Licence Office",
+      cell: ({ row }) => {
+        const l = row.original.officelicence_id
+          ? licenceById.get(row.original.officelicence_id)
+          : null;
+        return l ? (l.version ?? `#${l.id}`) : "—";
+      },
     },
     {
       id: "devis",

@@ -7,6 +7,7 @@ export interface EcranCreatePayload {
   taille: number | null;
   slot: number | null;
   ordinateur_id: number | null;
+  proprietaire: string | null;
   service: string | null;
   batiment: string | null;
   fournisseur: string | null;

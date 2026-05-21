@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -16,16 +17,28 @@ interface OwnerLink {
   office_licence_id?: number | null;
 }
 
+interface FormValues {
+  type: DocumentType;
+  nom: string;
+  numero: string;
+  path: string;
+  date_document: string;
+  montant_ttc: number | null;
+  montant_ht: number | null;
+  ordinateur_id: number | null;
+  ecran_id: number | null;
+  office_licence_id: number | null;
+}
+
 interface Props {
-  onSubmit: (data: DocumentCreatePayload) => void;
+  onSubmit: (items: DocumentCreatePayload[]) => void;
   isPending?: boolean;
   defaultValues?: Partial<DocumentCreatePayload>;
-  /** Lock the linked equipment when the form is opened from a two-step flow */
   fixedOwner?: OwnerLink;
-  /** Optional pickers for standalone use (from the Documents tab) */
   ordinateurs?: Ordinateur[];
   ecrans?: Ecran[];
   licences?: OfficeLicence[];
+  multiSelect?: boolean;
   submitLabel?: string;
 }
 
@@ -35,6 +48,38 @@ const TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
   { value: "facture", label: "Facture" },
 ];
 
+function CheckList<T extends { id: number }>({
+  items,
+  selected,
+  onToggle,
+  label,
+}: {
+  items: T[];
+  selected: number[];
+  onToggle: (id: number, checked: boolean) => void;
+  label: (item: T) => string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="max-h-36 overflow-y-auto border rounded-md p-2 space-y-1">
+      {items.map((item) => (
+        <label
+          key={item.id}
+          className="flex items-center gap-2 text-sm cursor-pointer select-none"
+        >
+          <input
+            type="checkbox"
+            className="accent-primary"
+            checked={selected.includes(item.id)}
+            onChange={(e) => onToggle(item.id, e.target.checked)}
+          />
+          {label(item)}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export function DocumentForm({
   onSubmit,
   isPending,
@@ -43,14 +88,27 @@ export function DocumentForm({
   ordinateurs,
   ecrans,
   licences,
+  multiSelect = false,
   submitLabel = "Enregistrer le document",
 }: Props) {
+  const [selectedOrds, setSelectedOrds] = useState<number[]>([]);
+  const [selectedEcrans, setSelectedEcrans] = useState<number[]>([]);
+  const [selectedLicences, setSelectedLicences] = useState<number[]>([]);
+
+  const toggle = (
+    setter: React.Dispatch<React.SetStateAction<number[]>>
+  ) => (id: number, checked: boolean) => {
+    setter((prev) =>
+      checked ? [...prev, id] : prev.filter((x) => x !== id)
+    );
+  };
+
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<DocumentCreatePayload>({
+  } = useForm<FormValues>({
     defaultValues: {
       type: defaultValues?.type ?? "facture",
       nom: defaultValues?.nom ?? "",
@@ -73,8 +131,49 @@ export function DocumentForm({
   const type = watch("type");
   const isFacture = type === "facture";
 
+  function buildItems(values: FormValues): DocumentCreatePayload[] {
+    const base: DocumentCreatePayload = {
+      type: values.type,
+      nom: values.nom,
+      numero: values.numero,
+      path: values.path,
+      date_document: values.date_document,
+      montant_ttc: isFacture ? values.montant_ttc : null,
+      montant_ht: isFacture ? values.montant_ht : null,
+      ordinateur_id: null,
+      ecran_id: null,
+      office_licence_id: null,
+    };
+
+    if (fixedOwner) {
+      return [{ ...base, ...fixedOwner }];
+    }
+
+    if (!multiSelect) {
+      return [
+        {
+          ...base,
+          ordinateur_id: values.ordinateur_id,
+          ecran_id: values.ecran_id,
+          office_licence_id: values.office_licence_id,
+        },
+      ];
+    }
+
+    const items: DocumentCreatePayload[] = [
+      ...selectedOrds.map((id) => ({ ...base, ordinateur_id: id })),
+      ...selectedEcrans.map((id) => ({ ...base, ecran_id: id })),
+      ...selectedLicences.map((id) => ({ ...base, office_licence_id: id })),
+    ];
+
+    return items.length > 0 ? items : [base];
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form
+      onSubmit={handleSubmit((values) => onSubmit(buildItems(values)))}
+      className="space-y-4"
+    >
       <div>
         <Label htmlFor="type">Type *</Label>
         <select
@@ -135,7 +234,7 @@ export function DocumentForm({
         />
       </div>
 
-      {!fixedOwner && (
+      {!fixedOwner && !multiSelect && (
         <div className="grid grid-cols-3 gap-4">
           <div>
             <Label htmlFor="ordinateur_id">Ordinateur</Label>
@@ -188,6 +287,61 @@ export function DocumentForm({
               ))}
             </select>
           </div>
+        </div>
+      )}
+
+      {!fixedOwner && multiSelect && (
+        <div className="space-y-3">
+          <Label>Équipements liés</Label>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Sélectionnez un ou plusieurs équipements. Un document sera créé pour
+            chaque sélection.
+          </p>
+
+          {(ordinateurs?.length ?? 0) > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Ordinateurs ({selectedOrds.length} sélectionné
+                {selectedOrds.length > 1 ? "s" : ""})
+              </p>
+              <CheckList
+                items={ordinateurs!}
+                selected={selectedOrds}
+                onToggle={toggle(setSelectedOrds)}
+                label={(o) => o.nom_reseau ?? o.tag ?? `#${o.id}`}
+              />
+            </div>
+          )}
+
+          {(ecrans?.length ?? 0) > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Écrans ({selectedEcrans.length} sélectionné
+                {selectedEcrans.length > 1 ? "s" : ""})
+              </p>
+              <CheckList
+                items={ecrans!}
+                selected={selectedEcrans}
+                onToggle={toggle(setSelectedEcrans)}
+                label={(e) => e.tag ?? `#${e.id}`}
+              />
+            </div>
+          )}
+
+          {(licences?.length ?? 0) > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Licences ({selectedLicences.length} sélectionné
+                {selectedLicences.length > 1 ? "s" : ""})
+              </p>
+              <CheckList
+                items={licences!}
+                selected={selectedLicences}
+                onToggle={toggle(setSelectedLicences)}
+                label={(l) => l.version ?? `#${l.id}`}
+              />
+            </div>
+          )}
         </div>
       )}
 

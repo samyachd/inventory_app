@@ -72,8 +72,8 @@ export function OrdinateurEditDialog({
             fixedOwner={{ ordinateur_id: ordinateur.id }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
-            onSubmit={(data) => {
-              createDoc.mutate(data, { onSuccess: close });
+            onSubmit={(items) => {
+              createDoc.mutate(items[0], { onSuccess: close });
             }}
           />
         ) : (
