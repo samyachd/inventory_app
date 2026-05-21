@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Upload, Plus, Trash2, Check } from "lucide-react";
+import { Upload, Plus, Trash2, Check, AlertTriangle, XCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/app/components/ui/button";
@@ -258,7 +258,9 @@ function EcrTable({
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-type Phase = "upload" | "uploading" | "review";
+const LOW_CONFIDENCE_THRESHOLD = 0.3;
+
+type Phase = "upload" | "uploading" | "review" | "low_confidence" | "error";
 
 export function Ocr() {
   const [phase, setPhase] = useState<Phase>("upload");
@@ -266,17 +268,43 @@ export function Ocr() {
   const [ords, setOrds] = useState<OrdDraft[]>([]);
   const [ecrs, setEcrs] = useState<EcrDraft[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [completude, setCompletude] = useState<number>(0);
 
   const queryClient = useQueryClient();
   const { data: inv } = useInventaire();
   const agents = inv?.agents ?? [];
   const ordinateurs = inv?.ordinateurs ?? [];
 
+  const reset = () => {
+    setOrds([]);
+    setEcrs([]);
+    setErrorMessage("");
+    setCompletude(0);
+    setPhase("upload");
+  };
+
   const handleFile = async (file: File) => {
     setPhase("uploading");
     try {
       const response = await extractFromFile(file);
-      const { ords: o, ecrs: e } = ocrToRows(response.donnees);
+      const { metriques, donnees } = response;
+      const { ords: o, ecrs: e } = ocrToRows(donnees);
+
+      if (donnees.length === 0) {
+        setErrorMessage("Le document ne contient aucun équipement identifiable.");
+        setPhase("low_confidence");
+        return;
+      }
+
+      if (metriques.taux_completude < LOW_CONFIDENCE_THRESHOLD) {
+        setOrds(o);
+        setEcrs(e);
+        setCompletude(metriques.taux_completude);
+        setPhase("low_confidence");
+        return;
+      }
+
       setOrds(o);
       setEcrs(e);
       setPhase("review");
@@ -285,10 +313,8 @@ export function Ocr() {
         description: `${total} ligne${total > 1 ? "s" : ""} générée${total > 1 ? "s" : ""}. Vérifiez avant de confirmer.`,
       });
     } catch (err) {
-      toast.error("Échec de l'analyse OCR", {
-        description: err instanceof Error ? err.message : "Erreur inconnue",
-      });
-      setPhase("upload");
+      setErrorMessage(err instanceof Error ? err.message : "Erreur inconnue");
+      setPhase("error");
     }
   };
 
@@ -365,9 +391,7 @@ export function Ocr() {
       toast.success(`${total} équipement${total > 1 ? "s" : ""} créé${total > 1 ? "s" : ""}`);
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
       queryClient.invalidateQueries({ queryKey: ["logs"] });
-      setOrds([]);
-      setEcrs([]);
-      setPhase("upload");
+      reset();
     } else {
       toast.error(`${errors} erreur${errors > 1 ? "s" : ""} sur ${total} lignes`);
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
@@ -375,7 +399,55 @@ export function Ocr() {
     }
   };
 
-  // ── Upload zone ──────────────────────────────────────────────────────────────
+  // ── Error phase ───────────────────────────────────────────────────────────────
+
+  if (phase === "error") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[75vh] gap-6">
+        <XCircle className="w-16 h-16 text-red-400" />
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-red-600">Échec de l'analyse</h2>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm">{errorMessage}</p>
+        </div>
+        <Button onClick={reset}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
+
+  // ── Low-confidence phase ──────────────────────────────────────────────────────
+
+  if (phase === "low_confidence") {
+    const total = ords.length + ecrs.length;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[75vh] gap-6">
+        <AlertTriangle className="w-16 h-16 text-amber-400" />
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-amber-600">Résultats peu fiables</h2>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+            {total === 0
+              ? "Aucun équipement identifiable dans ce document. Vérifiez que le fichier est lisible et contient bien un devis, bon de commande ou facture."
+              : `${total} équipement${total > 1 ? "s" : ""} trouvé${total > 1 ? "s" : ""} mais seulement ${Math.round(completude * 100)} % des champs ont pu être remplis. Le document est peut-être illisible ou hors-sujet.`}
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button onClick={reset}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Réessayer
+          </Button>
+          {total > 0 && (
+            <Button variant="outline" onClick={() => setPhase("review")}>
+              Continuer quand même
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Upload zone ───────────────────────────────────────────────────────────────
 
   if (phase !== "review") {
     return (
@@ -446,7 +518,7 @@ export function Ocr() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { setOrds([]); setEcrs([]); setPhase("upload"); }}>
+          <Button variant="outline" onClick={reset}>
             Annuler
           </Button>
           <Button onClick={handleConfirm} disabled={submitting || (ords.length + ecrs.length === 0)}>

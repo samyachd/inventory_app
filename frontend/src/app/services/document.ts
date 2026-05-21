@@ -52,9 +52,18 @@ export interface OcrExtractedData {
   type_equipement?: string | null;
 }
 
+export interface OcrMetriques {
+  taux_completude: number;
+  nb_champs_extraits: number;
+  nb_champs_vides: number;
+  nb_pages: number;
+  duree_ocr_ms: number;
+  duree_extraction_ms: number;
+}
+
 export interface OcrResponse {
-  donnees: OcrExtractedData[];  // one item per equipment found in the document
-  metriques: Record<string, unknown>;
+  donnees: OcrExtractedData[];
+  metriques: OcrMetriques;
 }
 
 export async function extractFromFile(file: File): Promise<OcrResponse> {
