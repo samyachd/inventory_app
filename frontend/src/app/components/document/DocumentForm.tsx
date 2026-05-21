@@ -235,7 +235,7 @@ export function DocumentForm({
       </div>
 
       {!fixedOwner && !multiSelect && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <Label htmlFor="ordinateur_id">Ordinateur</Label>
             <select
@@ -346,7 +346,7 @@ export function DocumentForm({
       )}
 
       {isFacture && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="montant_ht">Montant HT</Label>
             <Input

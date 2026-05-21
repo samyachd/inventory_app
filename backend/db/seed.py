@@ -172,7 +172,11 @@ def seed_agents(db, items: list[dict]) -> dict[str, Agent]:
             by_key[key] = existing
             skipped += 1
             continue
-        agent = Agent(nom=nom)
+        agent = Agent(
+            nom=nom,
+            clef_wifi=raw.get("clef_wifi"),
+            casque=raw.get("casque"),
+        )
         db.add(agent)
         db.flush()
         by_key[key] = agent
@@ -244,9 +248,7 @@ def seed_ordinateurs(
             ip_address=raw.get("ip_address"),
             mac_ethernet=raw.get("mac_ethernet"),
             mac_wifi=raw.get("mac_wifi"),
-            clef_wifi=raw.get("clef_wifi"),
             lecteur_cd=raw.get("lecteur_cd"),
-            casque=raw.get("casque"),
             absolute_dell=raw.get("absolute_dell"),
             office_licence_id=office_id,
             agent_id=agent_id,

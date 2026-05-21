@@ -29,15 +29,25 @@ export function useAgentColumns({ ordinateurs, ecrans }: Options): ColumnDef<Age
   }, [ordinateurs]);
 
   const ecransByAgent = useMemo(() => {
+    const agentByOrdId = new Map(
+      ordinateurs.filter((o) => o.agent_id != null).map((o) => [o.id, o.agent_id!])
+    );
     const map = new Map<number, Ecran[]>();
     for (const e of ecrans) {
-      if (e.agent_id == null) continue;
-      const list = map.get(e.agent_id) ?? [];
-      list.push(e);
-      map.set(e.agent_id, list);
+      const agentIds = new Set<number>();
+      if (e.agent_id != null) agentIds.add(e.agent_id);
+      if (e.ordinateur_id != null) {
+        const aid = agentByOrdId.get(e.ordinateur_id);
+        if (aid != null) agentIds.add(aid);
+      }
+      for (const aid of agentIds) {
+        const list = map.get(aid) ?? [];
+        list.push(e);
+        map.set(aid, list);
+      }
     }
     return map;
-  }, [ecrans]);
+  }, [ecrans, ordinateurs]);
 
   return [
     {

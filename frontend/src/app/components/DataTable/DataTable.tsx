@@ -2,6 +2,7 @@ import { useState, ReactNode } from "react";
 import { useAuth } from "@/app/hooks/useAuth";
 import {
   ColumnDef,
+  FilterFn,
   PaginationState,
   Row,
   RowSelectionState,
@@ -13,6 +14,28 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+
+const multiWordFilter: FilterFn<any> = (row, _columnId, filterValue: string) => {
+  const raw = filterValue.trim();
+  if (!raw) return true;
+
+  const haystack = row
+    .getAllCells()
+    .filter((c) => c.column.getCanGlobalFilter())
+    .map((c) => String(c.getValue() ?? ""))
+    .join(" ")
+    .toLowerCase();
+
+  // Comma-separated values → OR logic; each segment is a space-separated AND query.
+  // e.g. "CNF001, CNF002"  → match either serial
+  //      "dell windows"    → match both words anywhere in the row
+  const segments = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return segments.some((segment) => {
+    const terms = segment.toLowerCase().split(/\s+/).filter(Boolean);
+    return terms.every((t) => haystack.includes(t));
+  });
+};
+multiWordFilter.autoRemove = (val: string) => !val;
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Table,
@@ -122,6 +145,7 @@ export function DataTable<T>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    globalFilterFn: multiWordFilter,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
@@ -150,12 +174,12 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-2">
         <Input
           placeholder={searchPlaceholder}
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
-          className="max-w-sm"
+          className="w-full sm:max-w-sm"
         />
         {toolbarLeft}
         <div className="text-sm text-muted-foreground">

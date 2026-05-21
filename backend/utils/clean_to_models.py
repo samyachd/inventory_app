@@ -329,6 +329,10 @@ def build_ordinateur(row: dict) -> dict | None:
         "batiment": clean_str(row.get("EMPLACEMENT")),
         "proprietaire": None,
         "_agent_key": clean_str(row.get("UTILISATEUR PRINCIPAL")),
+        # _clef_wifi and _casque are agent-level accessories; stored here
+        # temporarily so main() can fold them into the agent dict.
+        "_clef_wifi": to_bool(row.get("CLEF WIFI")),
+        "_casque": to_bool(row.get("CASQUE")),
         "marque": marque,
         "fournisseur": clean_str(row.get("FOURNISSEUR PC")),
         "date_achat": date_achat,
@@ -339,9 +343,7 @@ def build_ordinateur(row: dict) -> dict | None:
         "ip_address": to_ip(row.get("Adresse IP PC")),
         "mac_ethernet": mac_eth,
         "mac_wifi": mac_wifi,
-        "clef_wifi": to_bool(row.get("CLEF WIFI")),
         "lecteur_cd": to_bool(row.get("LECTEUR DVD/CD EXTERNE")),
-        "casque": to_bool(row.get("CASQUE")),
         "absolute_dell": to_bool(row.get("ABSOLUTE DELL")),
     }
 
@@ -445,8 +447,16 @@ def main() -> None:
 
     for ordi in ordinateurs:
         key = ordi.get("_agent_key")
-        if key and key not in agents:
-            agents[key] = {"_agent_key": key, "nom": key}
+        clef = ordi.pop("_clef_wifi", None)
+        casque = ordi.pop("_casque", None)
+        if key:
+            if key not in agents:
+                agents[key] = {"_agent_key": key, "nom": key, "clef_wifi": None, "casque": None}
+            # First non-None value across all of the agent's PCs wins.
+            if agents[key]["clef_wifi"] is None and clef is not None:
+                agents[key]["clef_wifi"] = clef
+            if agents[key]["casque"] is None and casque is not None:
+                agents[key]["casque"] = casque
 
     output = {
         "ordinateurs": ordinateurs,

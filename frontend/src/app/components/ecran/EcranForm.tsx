@@ -71,7 +71,7 @@ export function EcranForm({
       )}
 
       <div className="overflow-y-auto max-h-[60vh] space-y-3 pr-1">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="tag">Tag *</Label>
             <Input id="tag" placeholder="SN5678" {...register("tag", { required: "Le tag est obligatoire" })} />
@@ -83,7 +83,7 @@ export function EcranForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="taille">Taille (")</Label>
             <Input
@@ -132,7 +132,7 @@ export function EcranForm({
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="service">Service</Label>
             <Input id="service" placeholder="État Civil" {...register("service")} />
@@ -143,7 +143,7 @@ export function EcranForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="fournisseur">Fournisseur</Label>
             <Input id="fournisseur" placeholder="Dell France" {...register("fournisseur")} />
@@ -165,7 +165,7 @@ export function EcranForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="date_achat">Date achat</Label>
             <Input id="date_achat" type="date" {...register("date_achat")} />

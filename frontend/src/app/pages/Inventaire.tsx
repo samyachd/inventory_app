@@ -22,11 +22,11 @@ export function Inventaire() {
   if (!data) return null;
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-6">Inventaire</h1>
+    <div className="p-3 sm:p-6">
+      <h1 className="text-2xl font-semibold mb-4 sm:mb-6">Inventaire</h1>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="flex overflow-x-auto w-full sm:inline-flex sm:w-auto">
           <TabsTrigger value="ordinateurs">
             Ordinateurs ({data.ordinateurs.length})
           </TabsTrigger>
