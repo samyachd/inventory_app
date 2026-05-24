@@ -9,7 +9,7 @@ import { DocumentTable } from "../components/document/DocumentTable";
 
 export function Inventaire() {
   const { data, isLoading, isError, error } = useInventaire();
-  const [tab, setTab] = useState("ordinateurs");
+  const [tab, setTab] = useState("agents");
 
   if (isLoading) return <div className="p-6">Chargement...</div>;
   if (isError) {
@@ -27,6 +27,9 @@ export function Inventaire() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex overflow-x-auto w-full sm:inline-flex sm:w-auto">
+          <TabsTrigger value="agents">
+            Agents ({data.agents.length})
+          </TabsTrigger>
           <TabsTrigger value="ordinateurs">
             Ordinateurs ({data.ordinateurs.length})
           </TabsTrigger>
@@ -38,9 +41,6 @@ export function Inventaire() {
           </TabsTrigger>
           <TabsTrigger value="documents">
             Documents ({data.documents.length})
-          </TabsTrigger>
-          <TabsTrigger value="agents">
-            Agents ({data.agents.length})
           </TabsTrigger>
         </TabsList>
 
@@ -87,6 +87,7 @@ export function Inventaire() {
               data={data.agents}
               ordinateurs={data.ordinateurs}
               ecrans={data.ecrans}
+              licences={data.licences}
             />
           )}
         </TabsContent>

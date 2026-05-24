@@ -311,8 +311,19 @@ function SchemaPanel({ table }: { table: string }) {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
+const TABLE_ORDER = ["agent", "ordinateur", "ecran", "office_licence", "document"];
+
+function sortTables(tables: string[]): string[] {
+  const rank = (name: string) => {
+    const i = TABLE_ORDER.indexOf(name);
+    return i === -1 ? TABLE_ORDER.length : i;
+  };
+  return [...tables].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}
+
 export function Gestion() {
-  const { data: tables = [], isLoading, isError } = useTables();
+  const { data: rawTables = [], isLoading, isError } = useTables();
+  const tables = sortTables(rawTables);
   const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
 
   const currentTab = activeTab ?? tables[0];
