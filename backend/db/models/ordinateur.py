@@ -5,7 +5,6 @@ from db.models.base import BaseEquipement
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from db.models.ecran import Ecran
     from db.models.agent import Agent
     from db.models.document import Document
     from db.models.office_licence import OfficeLicence
@@ -27,7 +26,6 @@ class Ordinateur(BaseEquipement):
     absolute_dell: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     watt: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    ecran: Mapped[Optional[list["Ecran"]]] = relationship(back_populates="ordinateur", passive_deletes=True)
     office_licence: Mapped[Optional["OfficeLicence"]] = relationship(back_populates="ordinateur", passive_deletes=True)
     agent: Mapped[Optional["Agent"]] = relationship(back_populates="ordinateur", passive_deletes=True)
     documents: Mapped[list["Document"]] = relationship(back_populates="ordinateur", passive_deletes=True)

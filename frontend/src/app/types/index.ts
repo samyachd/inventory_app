@@ -54,9 +54,7 @@ export interface Ordinateur extends BaseEquipment {
 
 export interface Ecran extends BaseEquipment {
   taille: number | null;
-  slot: number | null;
 
-  ordinateur_id: number | null;
   agent_id: number | null;
 }
 

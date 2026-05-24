@@ -2,6 +2,11 @@ import { useMemo } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import type { Agent, Ecran, Ordinateur } from "@/app/types";
 import { SortableHeader } from "../components/DataTable/SortableHeader";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "../components/ui/hover-card";
 
 interface Options {
   ordinateurs: Ordinateur[];
@@ -11,9 +16,54 @@ interface Options {
 const bool = (v: boolean | null | undefined) =>
   v == null ? "—" : v ? "Oui" : "Non";
 
-function tagList(items: { tag: string | null; id: number }[]): string {
-  if (items.length === 0) return "—";
-  return items.map((i) => i.tag ?? `#${i.id}`).join(", ");
+const PREVIEW_COUNT = 3;
+
+function tagOf(item: { tag: string | null; id: number }): string {
+  return item.tag ?? `#${item.id}`;
+}
+
+function TagListCell({
+  items,
+}: {
+  items: { tag: string | null; id: number }[];
+}) {
+  if (items.length === 0) return <>—</>;
+  const preview = items.slice(0, PREVIEW_COUNT).map(tagOf).join(", ");
+  const extra = items.length - PREVIEW_COUNT;
+  if (extra <= 0) return <>{preview}</>;
+  return (
+    <span className="inline-flex items-baseline gap-1">
+      <span>{preview}</span>
+      <HoverCard openDelay={120} closeDelay={80}>
+        <HoverCardTrigger asChild>
+          <button
+            type="button"
+            className="text-xs px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-default"
+          >
+            +{extra}
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent
+          align="start"
+          className="w-auto max-w-xs p-2 text-xs"
+        >
+          <div className="font-medium mb-1 text-muted-foreground">
+            {items.length} au total
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {items.map((i) => (
+              <span
+                key={i.id}
+                className="px-1.5 py-0.5 rounded bg-muted text-foreground"
+              >
+                {tagOf(i)}
+              </span>
+            ))}
+          </div>
+        </HoverCardContent>
+      </HoverCard>
+    </span>
+  );
 }
 
 export function useAgentColumns({ ordinateurs, ecrans }: Options): ColumnDef<Agent>[] {
@@ -29,25 +79,15 @@ export function useAgentColumns({ ordinateurs, ecrans }: Options): ColumnDef<Age
   }, [ordinateurs]);
 
   const ecransByAgent = useMemo(() => {
-    const agentByOrdId = new Map(
-      ordinateurs.filter((o) => o.agent_id != null).map((o) => [o.id, o.agent_id!])
-    );
     const map = new Map<number, Ecran[]>();
     for (const e of ecrans) {
-      const agentIds = new Set<number>();
-      if (e.agent_id != null) agentIds.add(e.agent_id);
-      if (e.ordinateur_id != null) {
-        const aid = agentByOrdId.get(e.ordinateur_id);
-        if (aid != null) agentIds.add(aid);
-      }
-      for (const aid of agentIds) {
-        const list = map.get(aid) ?? [];
-        list.push(e);
-        map.set(aid, list);
-      }
+      if (e.agent_id == null) continue;
+      const list = map.get(e.agent_id) ?? [];
+      list.push(e);
+      map.set(e.agent_id, list);
     }
     return map;
-  }, [ecrans, ordinateurs]);
+  }, [ecrans]);
 
   return [
     {
@@ -77,14 +117,16 @@ export function useAgentColumns({ ordinateurs, ecrans }: Options): ColumnDef<Age
     {
       id: "ordinateurs",
       header: "Ordinateurs",
-      cell: ({ row }) =>
-        tagList(ordsByAgent.get(row.original.id) ?? []),
+      cell: ({ row }) => (
+        <TagListCell items={ordsByAgent.get(row.original.id) ?? []} />
+      ),
     },
     {
       id: "ecrans",
       header: "Écrans",
-      cell: ({ row }) =>
-        tagList(ecransByAgent.get(row.original.id) ?? []),
+      cell: ({ row }) => (
+        <TagListCell items={ecransByAgent.get(row.original.id) ?? []} />
+      ),
     },
   ];
 }

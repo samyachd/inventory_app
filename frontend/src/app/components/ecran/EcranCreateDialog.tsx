@@ -11,15 +11,14 @@ import {
 import { Button } from "@/app/components/ui/button";
 import { EcranForm } from "./EcranForm";
 import { useCreateEcran } from "@/app/hooks/useEcran";
-import type { Agent, Ordinateur } from "@/app/types";
+import type { Agent } from "@/app/types";
 
 interface Props {
   agents: Agent[];
-  ordinateurs: Ordinateur[];
   disabled?: boolean;
 }
 
-export function EcranCreateDialog({ agents, ordinateurs, disabled }: Props) {
+export function EcranCreateDialog({ agents, disabled }: Props) {
   const [open, setOpen] = useState(false);
   const createEcran = useCreateEcran();
 
@@ -40,7 +39,6 @@ export function EcranCreateDialog({ agents, ordinateurs, disabled }: Props) {
         </DialogHeader>
         <EcranForm
           agents={agents}
-          ordinateurs={ordinateurs}
           isPending={createEcran.isPending}
           onSubmit={(data) =>
             createEcran.mutate(data, { onSuccess: () => setOpen(false) })

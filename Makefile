@@ -42,7 +42,7 @@ migrate:  ## Applique les migrations en attente
 	docker compose exec backend uv run alembic upgrade head
 
 seed:  ## Remplit la DB avec des données de test
-	docker compose exec backend uv run python -m utils.seed_example
+	docker compose exec backend uv run python -m db.seed
 
 db-reset:  ## ⚠️  Efface la DB, recrée le schéma et re-seed
 	docker compose down -v

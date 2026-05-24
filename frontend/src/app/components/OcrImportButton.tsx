@@ -18,10 +18,18 @@ export function OcrImportButton({ onExtracted }: Props) {
     setPending(true);
     try {
       const result = await extractFromFile(file);
-      onExtracted(result.donnees);
-      const filled = Object.values(result.donnees).filter((v) => v != null).length;
+      const first = result.donnees[0];
+      if (!first) {
+        toast.warning("Aucun équipement détecté dans le document");
+        return;
+      }
+      onExtracted(first);
+      const filled = Object.values(first).filter((v) => v != null).length;
+      const extra = result.donnees.length - 1;
       toast.success("Document analysé", {
-        description: `${filled} champ${filled > 1 ? "s" : ""} extrait${filled > 1 ? "s" : ""}. Vérifiez avant d'enregistrer.`,
+        description:
+          `${filled} champ${filled > 1 ? "s" : ""} extrait${filled > 1 ? "s" : ""}. Vérifiez avant d'enregistrer.` +
+          (extra > 0 ? ` (${extra} équipement${extra > 1 ? "s" : ""} supplémentaire${extra > 1 ? "s" : ""} ignoré${extra > 1 ? "s" : ""} — utilisez l'import en lot pour tout traiter.)` : ""),
       });
     } catch (e) {
       toast.error("Échec de l'analyse OCR", {

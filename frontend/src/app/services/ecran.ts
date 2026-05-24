@@ -5,8 +5,6 @@ export interface EcranCreatePayload {
   tag: string | null;
   marque: string | null;
   taille: number | null;
-  slot: number | null;
-  ordinateur_id: number | null;
   proprietaire: string | null;
   service: string | null;
   batiment: string | null;

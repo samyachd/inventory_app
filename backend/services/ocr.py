@@ -19,7 +19,7 @@ CHAMPS = [
     "mac_ethernet", "mac_wifi", "tag_chargeur", "watt",
     "clef_wifi", "lecteur_cd", "casque", "absolute_dell",
     # Ecran-specific
-    "taille", "slot",
+    "taille",
     # Licence-specific
     "type_licence", "version_logiciel", "clef_licence", "mail_activation",
 ]
@@ -96,7 +96,6 @@ CHAMPS À EXTRAIRE pour chaque élément :
 
 -- Champs spécifiques aux écrans (ECRAN) --
 - taille : taille en pouces (décimal, ex: 24.0, 27.0)
-- slot   : numéro de port/slot DisplayPort (entier 1-5) si mentionné
 
 -- Champs spécifiques aux licences logicielles (LICENCE) --
 - type_licence     : type de licence (ex: 'OEM', 'Volume', 'Retail', 'Abonnement')

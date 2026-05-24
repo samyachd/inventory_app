@@ -369,7 +369,7 @@ def build_ecrans(row: dict, ordi_tag: str | None) -> list[dict]:
             continue
         ecrans.append({
             "tag": serie,
-            "slot": slot,
+            "_slot": slot,
             "taille": to_size(type_e),           # values like 'LCD 22"' fit BaseEquipement.taille semantics
             "marque": " ".join(filter(None, [marque, modele])) or None,
             "type_equipement": "ECRAN",

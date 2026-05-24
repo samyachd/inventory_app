@@ -40,7 +40,6 @@ type EcrDraft = {
   tag: string;
   marque: string;
   taille: string;
-  slot: string;
   fournisseur: string;
   date_achat: string;
   fin_garantie: string;
@@ -48,7 +47,6 @@ type EcrDraft = {
   service: string;
   batiment: string;
   agent_id: string;
-  ordinateur_id: string;
 };
 
 const uid = () => Math.random().toString(36).slice(2);
@@ -62,9 +60,9 @@ const emptyOrd = (): OrdDraft => ({
 });
 
 const emptyEcr = (): EcrDraft => ({
-  _id: uid(), tag: "", marque: "", taille: "", slot: "", fournisseur: "",
+  _id: uid(), tag: "", marque: "", taille: "", fournisseur: "",
   date_achat: "", fin_garantie: "", proprietaire: "", service: "",
-  batiment: "", agent_id: "", ordinateur_id: "",
+  batiment: "", agent_id: "",
 });
 
 function ocrToRows(items: OcrExtractedData[]): { ords: OrdDraft[]; ecrs: EcrDraft[] } {
@@ -86,8 +84,6 @@ function ocrToRows(items: OcrExtractedData[]): { ords: OrdDraft[]; ecrs: EcrDraf
       ecrs.push({
         ...emptyEcr(), ...common,
         taille: ocr.taille != null ? String(ocr.taille) : "",
-        slot: ocr.slot != null ? String(ocr.slot) : "",
-        ordinateur_id: "",
       });
     } else {
       ords.push({
@@ -218,11 +214,10 @@ function OrdTable({
 // ─── Écran table ──────────────────────────────────────────────────────────────
 
 function EcrTable({
-  rows, agents, ordinateurs, onChange, onDelete,
+  rows, agents, onChange, onDelete,
 }: {
   rows: EcrDraft[];
   agents: { id: number; nom: string }[];
-  ordinateurs: { id: number; tag: string | null; nom_reseau: string | null }[];
   onChange: (id: string, field: keyof EcrDraft, val: string) => void;
   onDelete: (id: string) => void;
 }) {
@@ -236,7 +231,7 @@ function EcrTable({
         <table className="text-xs w-full">
           <thead className="bg-gray-50 text-muted-foreground">
             <tr>
-              {["Tag", "Marque", "Taille (po)", "Fournisseur", "Date achat", "Fin garantie", "Service", "Bâtiment", "Agent", "PC lié", ""].map((h) => (
+              {["Tag", "Marque", "Taille (po)", "Fournisseur", "Date achat", "Fin garantie", "Service", "Bâtiment", "Agent", ""].map((h) => (
                 <th key={h} className="px-2 py-2 text-left font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -256,16 +251,6 @@ function EcrTable({
                   <TSelect value={r.agent_id} onChange={(v) => onChange(r._id, "agent_id", v)}>
                     <option value="">—</option>
                     {agents.map((a) => <option key={a.id} value={String(a.id)}>{a.nom}</option>)}
-                  </TSelect>
-                </TCell>
-                <TCell>
-                  <TSelect value={r.ordinateur_id} onChange={(v) => onChange(r._id, "ordinateur_id", v)}>
-                    <option value="">—</option>
-                    {ordinateurs.map((o) => (
-                      <option key={o.id} value={String(o.id)}>
-                        {o.tag ?? o.nom_reseau ?? `PC #${o.id}`}
-                      </option>
-                    ))}
                   </TSelect>
                 </TCell>
                 <TCell>
@@ -300,7 +285,6 @@ export function Ocr() {
   const queryClient = useQueryClient();
   const { data: inv } = useInventaire();
   const agents = inv?.agents ?? [];
-  const ordinateurs = inv?.ordinateurs ?? [];
 
   const reset = () => {
     setOrds([]);
@@ -396,7 +380,6 @@ export function Ocr() {
           tag: r.tag || null,
           marque: r.marque || null,
           taille: r.taille ? Number(r.taille) : null,
-          slot: r.slot ? Number(r.slot) : null,
           fournisseur: r.fournisseur || null,
           date_achat: r.date_achat || null,
           fin_garantie: r.fin_garantie || null,
@@ -404,7 +387,6 @@ export function Ocr() {
           service: r.service || null,
           batiment: r.batiment || null,
           agent_id: r.agent_id ? Number(r.agent_id) : null,
-          ordinateur_id: r.ordinateur_id ? Number(r.ordinateur_id) : null,
         });
       } catch {
         errors++;
@@ -556,7 +538,7 @@ export function Ocr() {
       </div>
 
       <OrdTable rows={ords} agents={agents} onChange={changeOrd} onDelete={(id) => setOrds((p) => p.filter((r) => r._id !== id))} />
-      <EcrTable rows={ecrs} agents={agents} ordinateurs={ordinateurs} onChange={changeEcr} onDelete={(id) => setEcrs((p) => p.filter((r) => r._id !== id))} />
+      <EcrTable rows={ecrs} agents={agents} onChange={changeEcr} onDelete={(id) => setEcrs((p) => p.filter((r) => r._id !== id))} />
 
       <div className="flex gap-2">
         <Button variant="outline" size="sm" onClick={() => setOrds((p) => [...p, emptyOrd()])}>

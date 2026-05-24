@@ -269,18 +269,21 @@ def seed_ecrans(
 ) -> None:
     created = 0
     skipped_dup = 0
-    skipped_slot = 0
     seen_tags: set[str] = set()
     for raw in items:
+        # The Excel rows are PC-centric, so we use the PC tag only as a hop
+        # to find the agent. The ecran itself is linked to the agent, not the PC.
         owner_tag = raw.get("_ordinateur_tag")
         ordi = ordis_by_tag.get(owner_tag) if owner_tag else None
-        ordi_id = ordi.id if ordi else None
-        slot = raw.get("slot") if ordi_id is not None else None
+        agent_id = ordi.agent_id if ordi else None
+        # _slot is an ETL-only hint (source-row position) used to build a
+        # deterministic tag when several screens on the same PC have no serial.
+        slot_hint = raw.get("_slot") if owner_tag else None
 
         tag = raw.get("tag")
         if not tag:
-            if owner_tag and slot is not None:
-                tag = f"ECR-{owner_tag}-S{slot}"
+            if owner_tag and slot_hint is not None:
+                tag = f"ECR-{owner_tag}-S{slot_hint}"
             else:
                 tag = _fallback_tag("ECR", raw)
 
@@ -294,20 +297,8 @@ def seed_ecrans(
             continue
         seen_tags.add(tag)
 
-        # Slot is unique per ordinateur; skip if already taken
-        if ordi_id is not None and slot is not None:
-            taken = (
-                db.query(Ecran)
-                .filter(Ecran.ordinateur_id == ordi_id, Ecran.slot == slot)
-                .first()
-            )
-            if taken:
-                skipped_slot += 1
-                continue
-
         ecran = Ecran(
             tag=tag,
-            slot=slot,
             taille=raw.get("taille"),
             marque=raw.get("marque"),
             type_equipement=raw.get("type_equipement"),
@@ -316,14 +307,14 @@ def seed_ecrans(
             fournisseur=raw.get("fournisseur"),
             date_achat=_parse_date(raw.get("date_achat")),
             fin_garantie=_parse_date(raw.get("fin_garantie")),
-            ordinateur_id=ordi_id,
+            agent_id=agent_id,
         )
         db.add(ecran)
         created += 1
     db.flush()
     print(
         f"  ✓ ecrans         : {created}/{len(items)} created"
-        f" (skipped {skipped_dup} duplicates by tag, {skipped_slot} slot conflicts)"
+        f" (skipped {skipped_dup} duplicates by tag)"
     )
 
 

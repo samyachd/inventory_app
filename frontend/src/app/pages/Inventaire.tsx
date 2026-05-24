@@ -59,7 +59,6 @@ export function Inventaire() {
             <EcranTable
               data={data.ecrans}
               agents={data.agents}
-              ordinateurs={data.ordinateurs}
               documents={data.documents}
             />
           )}

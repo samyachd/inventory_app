@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
-import type { Agent, Ordinateur } from "@/app/types";
+import type { Agent } from "@/app/types";
 import type { EcranCreatePayload } from "@/app/services/ecran";
 import type { OcrExtractedData } from "@/app/services/document";
 import { OcrImportButton } from "../OcrImportButton";
@@ -11,7 +11,6 @@ const SEL = "w-full border rounded-md px-3 py-2 text-sm bg-background";
 
 interface Props {
   agents: Agent[];
-  ordinateurs: Ordinateur[];
   onSubmit: (data: EcranCreatePayload) => void;
   isPending?: boolean;
   defaultValues?: Partial<EcranCreatePayload>;
@@ -21,7 +20,6 @@ interface Props {
 
 export function EcranForm({
   agents,
-  ordinateurs,
   onSubmit,
   isPending,
   defaultValues,
@@ -33,8 +31,6 @@ export function EcranForm({
       tag: defaultValues?.tag ?? "",
       marque: defaultValues?.marque ?? "",
       taille: defaultValues?.taille ?? null,
-      slot: defaultValues?.slot ?? null,
-      ordinateur_id: defaultValues?.ordinateur_id ?? null,
       service: defaultValues?.service ?? "",
       batiment: defaultValues?.batiment ?? "",
       fournisseur: defaultValues?.fournisseur ?? "",
@@ -83,53 +79,18 @@ export function EcranForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <Label htmlFor="taille">Taille (")</Label>
-            <Input
-              id="taille"
-              type="number"
-              step="0.1"
-              min="0"
-              placeholder="24"
-              {...register("taille", {
-                setValueAs: (v) => (v === "" || v == null) ? null : parseFloat(v),
-              })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="slot">Slot</Label>
-            <select
-              id="slot"
-              className={SEL}
-              {...register("slot", {
-                setValueAs: (v) => (v === "" ? null : Number(v)),
-              })}
-            >
-              <option value="">—</option>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
         <div>
-          <Label htmlFor="ordinateur_id">PC lié</Label>
-          <select
-            id="ordinateur_id"
-            className={SEL}
-            {...register("ordinateur_id", {
-              setValueAs: (v) => (v === "" ? null : Number(v)),
+          <Label htmlFor="taille">Taille (")</Label>
+          <Input
+            id="taille"
+            type="number"
+            step="0.1"
+            min="0"
+            placeholder="24"
+            {...register("taille", {
+              setValueAs: (v) => (v === "" || v == null) ? null : parseFloat(v),
             })}
-          >
-            <option value="">— Aucun —</option>
-            {ordinateurs.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.nom_reseau ?? o.tag ?? `#${o.id}`}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

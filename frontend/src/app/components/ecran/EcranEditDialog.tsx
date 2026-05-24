@@ -10,7 +10,7 @@ import { EcranForm } from "./EcranForm";
 import { DocumentForm } from "../document/DocumentForm";
 import { useUpdateEcran } from "@/app/hooks/useEcran";
 import { useCreateDocument } from "@/app/hooks/useDocument";
-import type { Agent, Document as DocumentT, Ecran, Ordinateur } from "@/app/types";
+import type { Agent, Document as DocumentT, Ecran } from "@/app/types";
 import type { OcrExtractedData } from "@/app/services/document";
 import {
   isDocumentAlreadyRegistered,
@@ -20,7 +20,6 @@ import {
 interface Props {
   ecran: Ecran;
   agents: Agent[];
-  ordinateurs: Ordinateur[];
   documents: DocumentT[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,7 +28,6 @@ interface Props {
 export function EcranEditDialog({
   ecran,
   agents,
-  ordinateurs,
   documents,
   open,
   onOpenChange,
@@ -81,7 +79,6 @@ export function EcranEditDialog({
         ) : (
           <EcranForm
             agents={agents}
-            ordinateurs={ordinateurs}
             isPending={updateEcran.isPending}
             submitLabel="Enregistrer les modifications"
             onOcrExtracted={setPendingOcr}
@@ -89,8 +86,6 @@ export function EcranEditDialog({
               tag: ecran.tag,
               marque: ecran.marque,
               taille: ecran.taille,
-              slot: ecran.slot,
-              ordinateur_id: ecran.ordinateur_id,
               service: ecran.service,
               batiment: ecran.batiment,
               fournisseur: ecran.fournisseur,
