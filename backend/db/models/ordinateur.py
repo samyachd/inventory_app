@@ -28,4 +28,6 @@ class Ordinateur(BaseEquipement):
 
     office_licence: Mapped[Optional["OfficeLicence"]] = relationship(back_populates="ordinateur", passive_deletes=True)
     agent: Mapped[Optional["Agent"]] = relationship(back_populates="ordinateur", passive_deletes=True)
-    documents: Mapped[list["Document"]] = relationship(back_populates="ordinateur", passive_deletes=True)
+    documents: Mapped[list["Document"]] = relationship(
+        secondary="document_ordinateur", back_populates="ordinateurs"
+    )

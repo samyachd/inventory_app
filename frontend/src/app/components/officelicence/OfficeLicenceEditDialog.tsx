@@ -65,7 +65,7 @@ export function OfficeLicenceEditDialog({
 
         {showDocStep ? (
           <DocumentForm
-            fixedOwner={{ office_licence_id: licence.id }}
+            fixedOwner={{ office_licence_ids: [licence.id] }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
             onSubmit={(items) => {

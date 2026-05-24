@@ -69,7 +69,7 @@ export function OrdinateurEditDialog({
 
         {showDocStep ? (
           <DocumentForm
-            fixedOwner={{ ordinateur_id: ordinateur.id }}
+            fixedOwner={{ ordinateur_ids: [ordinateur.id] }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
             onSubmit={(items) => {

@@ -12,9 +12,9 @@ import type {
 import type { DocumentCreatePayload } from "@/app/services/document";
 
 interface OwnerLink {
-  ordinateur_id?: number | null;
-  ecran_id?: number | null;
-  office_licence_id?: number | null;
+  ordinateur_ids?: number[];
+  ecran_ids?: number[];
+  office_licence_ids?: number[];
 }
 
 interface FormValues {
@@ -25,9 +25,6 @@ interface FormValues {
   date_document: string;
   montant_ttc: number | null;
   montant_ht: number | null;
-  ordinateur_id: number | null;
-  ecran_id: number | null;
-  office_licence_id: number | null;
 }
 
 interface Props {
@@ -38,7 +35,6 @@ interface Props {
   ordinateurs?: Ordinateur[];
   ecrans?: Ecran[];
   licences?: OfficeLicence[];
-  multiSelect?: boolean;
   submitLabel?: string;
 }
 
@@ -61,7 +57,7 @@ function CheckList<T extends { id: number }>({
 }) {
   if (items.length === 0) return null;
   return (
-    <div className="max-h-36 overflow-y-auto border rounded-md p-2 space-y-1">
+    <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
       {items.map((item) => (
         <label
           key={item.id}
@@ -88,12 +84,17 @@ export function DocumentForm({
   ordinateurs,
   ecrans,
   licences,
-  multiSelect = false,
   submitLabel = "Enregistrer le document",
 }: Props) {
-  const [selectedOrds, setSelectedOrds] = useState<number[]>([]);
-  const [selectedEcrans, setSelectedEcrans] = useState<number[]>([]);
-  const [selectedLicences, setSelectedLicences] = useState<number[]>([]);
+  const [selectedOrds, setSelectedOrds] = useState<number[]>(
+    defaultValues?.ordinateur_ids ?? []
+  );
+  const [selectedEcrans, setSelectedEcrans] = useState<number[]>(
+    defaultValues?.ecran_ids ?? []
+  );
+  const [selectedLicences, setSelectedLicences] = useState<number[]>(
+    defaultValues?.office_licence_ids ?? []
+  );
 
   const toggle = (
     setter: React.Dispatch<React.SetStateAction<number[]>>
@@ -118,20 +119,13 @@ export function DocumentForm({
         defaultValues?.date_document ?? new Date().toISOString().split("T")[0],
       montant_ttc: defaultValues?.montant_ttc ?? null,
       montant_ht: defaultValues?.montant_ht ?? null,
-      ordinateur_id:
-        fixedOwner?.ordinateur_id ?? defaultValues?.ordinateur_id ?? null,
-      ecran_id: fixedOwner?.ecran_id ?? defaultValues?.ecran_id ?? null,
-      office_licence_id:
-        fixedOwner?.office_licence_id ??
-        defaultValues?.office_licence_id ??
-        null,
     },
   });
 
   const type = watch("type");
   const isFacture = type === "facture";
 
-  function buildItems(values: FormValues): DocumentCreatePayload[] {
+  function buildItem(values: FormValues): DocumentCreatePayload {
     const base: DocumentCreatePayload = {
       type: values.type,
       nom: values.nom,
@@ -140,38 +134,26 @@ export function DocumentForm({
       date_document: values.date_document,
       montant_ttc: isFacture ? values.montant_ttc : null,
       montant_ht: isFacture ? values.montant_ht : null,
-      ordinateur_id: null,
-      ecran_id: null,
-      office_licence_id: null,
+      ordinateur_ids: selectedOrds,
+      ecran_ids: selectedEcrans,
+      office_licence_ids: selectedLicences,
     };
 
     if (fixedOwner) {
-      return [{ ...base, ...fixedOwner }];
+      return {
+        ...base,
+        ordinateur_ids: fixedOwner.ordinateur_ids ?? base.ordinateur_ids,
+        ecran_ids: fixedOwner.ecran_ids ?? base.ecran_ids,
+        office_licence_ids:
+          fixedOwner.office_licence_ids ?? base.office_licence_ids,
+      };
     }
-
-    if (!multiSelect) {
-      return [
-        {
-          ...base,
-          ordinateur_id: values.ordinateur_id,
-          ecran_id: values.ecran_id,
-          office_licence_id: values.office_licence_id,
-        },
-      ];
-    }
-
-    const items: DocumentCreatePayload[] = [
-      ...selectedOrds.map((id) => ({ ...base, ordinateur_id: id })),
-      ...selectedEcrans.map((id) => ({ ...base, ecran_id: id })),
-      ...selectedLicences.map((id) => ({ ...base, office_licence_id: id })),
-    ];
-
-    return items.length > 0 ? items : [base];
+    return base;
   }
 
   return (
     <form
-      onSubmit={handleSubmit((values) => onSubmit(buildItems(values)))}
+      onSubmit={handleSubmit((values) => onSubmit([buildItem(values)]))}
       className="space-y-4"
     >
       <div>
@@ -234,68 +216,12 @@ export function DocumentForm({
         />
       </div>
 
-      {!fixedOwner && !multiSelect && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="ordinateur_id">Ordinateur</Label>
-            <select
-              id="ordinateur_id"
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              {...register("ordinateur_id", {
-                setValueAs: (v) => (v === "" ? null : Number(v)),
-              })}
-            >
-              <option value="">— Aucun —</option>
-              {ordinateurs?.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.nom_reseau ?? o.tag ?? `#${o.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="ecran_id">Écran</Label>
-            <select
-              id="ecran_id"
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              {...register("ecran_id", {
-                setValueAs: (v) => (v === "" ? null : Number(v)),
-              })}
-            >
-              <option value="">— Aucun —</option>
-              {ecrans?.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.tag ?? `#${e.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="office_licence_id">Licence</Label>
-            <select
-              id="office_licence_id"
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              {...register("office_licence_id", {
-                setValueAs: (v) => (v === "" ? null : Number(v)),
-              })}
-            >
-              <option value="">— Aucune —</option>
-              {licences?.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.version ?? `#${l.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
-
-      {!fixedOwner && multiSelect && (
+      {!fixedOwner && (
         <div className="space-y-3">
           <Label>Équipements liés</Label>
           <p className="text-xs text-muted-foreground -mt-1">
-            Sélectionnez un ou plusieurs équipements. Un document sera créé pour
-            chaque sélection.
+            Sélectionnez les équipements concernés. Le document peut être lié à
+            plusieurs ordinateurs, écrans et licences à la fois.
           </p>
 
           {(ordinateurs?.length ?? 0) > 0 && (

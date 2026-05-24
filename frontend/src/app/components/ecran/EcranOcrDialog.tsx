@@ -64,7 +64,7 @@ export function EcranOcrDialog({ agents, documents }: Props) {
 
         {showDocStep ? (
           <DocumentForm
-            fixedOwner={{ ecran_id: createdEcranId }}
+            fixedOwner={{ ecran_ids: createdEcranId != null ? [createdEcranId] : [] }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
             onSubmit={(items) => createDoc.mutate(items[0], { onSuccess: reset })}

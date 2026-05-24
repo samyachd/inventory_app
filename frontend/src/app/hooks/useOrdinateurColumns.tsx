@@ -15,20 +15,22 @@ type DocsByOwner = Map<number, Map<DocumentType, Document>>;
 
 function indexDocsByOwner(
   documents: Document[],
-  ownerKey: "ordinateur_id" | "ecran_id" | "office_licence_id"
+  ownerKey: "ordinateur_ids" | "ecran_ids" | "office_licence_ids"
 ): DocsByOwner {
   const map: DocsByOwner = new Map();
   for (const doc of documents) {
-    const ownerId = doc[ownerKey];
-    if (ownerId == null) continue;
-    let inner = map.get(ownerId);
-    if (!inner) {
-      inner = new Map();
-      map.set(ownerId, inner);
-    }
-    const existing = inner.get(doc.type);
-    if (!existing || doc.date_document > existing.date_document) {
-      inner.set(doc.type, doc);
+    const ownerIds = doc[ownerKey];
+    if (!ownerIds || ownerIds.length === 0) continue;
+    for (const ownerId of ownerIds) {
+      let inner = map.get(ownerId);
+      if (!inner) {
+        inner = new Map();
+        map.set(ownerId, inner);
+      }
+      const existing = inner.get(doc.type);
+      if (!existing || doc.date_document > existing.date_document) {
+        inner.set(doc.type, doc);
+      }
     }
   }
   return map;
@@ -60,7 +62,7 @@ export function useOrdinateurColumns({
   );
 
   const docsByOrdinateur = useMemo(
-    () => indexDocsByOwner(documents, "ordinateur_id"),
+    () => indexDocsByOwner(documents, "ordinateur_ids"),
     [documents]
   );
 

@@ -20,4 +20,6 @@ class OfficeLicence(BaseEntry):
     mail_activation: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     ordinateur: Mapped[list["Ordinateur"]] = relationship(back_populates="office_licence", passive_deletes=True)
-    documents: Mapped[list["Document"]] = relationship(back_populates="office_licence", passive_deletes=True)
+    documents: Mapped[list["Document"]] = relationship(
+        secondary="document_office_licence", back_populates="office_licences"
+    )

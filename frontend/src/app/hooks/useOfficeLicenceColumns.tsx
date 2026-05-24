@@ -19,7 +19,7 @@ export function useOfficeLicenceColumns({
   documents,
 }: Options): ColumnDef<OfficeLicence>[] {
   const docsByLicence = useMemo(
-    () => indexDocsByOwner(documents, "office_licence_id"),
+    () => indexDocsByOwner(documents, "office_licence_ids"),
     [documents]
   );
 

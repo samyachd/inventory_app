@@ -18,4 +18,6 @@ class Ecran(BaseEquipement):
     taille: Mapped[float | None] = mapped_column(Float, nullable=True, index=True)
 
     agent: Mapped[Optional["Agent"]] = relationship(back_populates="ecran", passive_deletes=True)
-    documents: Mapped[list["Document"]] = relationship(back_populates="ecran", passive_deletes=True)
+    documents: Mapped[list["Document"]] = relationship(
+        secondary="document_ecran", back_populates="ecrans"
+    )

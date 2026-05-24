@@ -99,9 +99,9 @@ export interface Document {
   date_document: string;
   montant_ttc: number | null;
   montant_ht: number | null;
-  ordinateur_id: number | null;
-  ecran_id: number | null;
-  office_licence_id: number | null;
+  ordinateur_ids: number[];
+  ecran_ids: number[];
+  office_licence_ids: number[];
   created_at: string;
   updated_at: string | null;
 }

@@ -69,7 +69,7 @@ export function EcranEditDialog({
 
         {showDocStep ? (
           <DocumentForm
-            fixedOwner={{ ecran_id: ecran.id }}
+            fixedOwner={{ ecran_ids: [ecran.id] }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
             onSubmit={(items) => {

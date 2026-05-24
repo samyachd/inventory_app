@@ -38,15 +38,14 @@ export function DocumentCreateDialog({ ordinateurs, ecrans, licences, disabled }
           <DialogTitle>Nouveau document</DialogTitle>
           <DialogDescription>
             Renseignez les informations du document et sélectionnez les
-            équipements à lier. Un document sera créé pour chaque équipement
-            sélectionné.
+            équipements à lier. Un seul document est créé, lié à toutes les
+            sélections.
           </DialogDescription>
         </DialogHeader>
         <DocumentForm
           ordinateurs={ordinateurs}
           ecrans={ecrans}
           licences={licences}
-          multiSelect={true}
           isPending={isPending}
           onSubmit={async (items) => {
             setIsPending(true);

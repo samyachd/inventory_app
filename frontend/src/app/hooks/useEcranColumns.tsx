@@ -28,7 +28,7 @@ export function useEcranColumns({
   );
 
   const docsByEcran = useMemo(
-    () => indexDocsByOwner(documents, "ecran_id"),
+    () => indexDocsByOwner(documents, "ecran_ids"),
     [documents]
   );
 
