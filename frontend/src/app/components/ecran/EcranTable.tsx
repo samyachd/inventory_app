@@ -12,9 +12,10 @@ interface Props {
   data: Ecran[];
   agents: Agent[];
   documents: Document[];
+  hideSearch?: boolean;
 }
 
-export function EcranTable({ data, agents, documents }: Props) {
+export function EcranTable({ data, agents, documents, hideSearch }: Props) {
   const [editingEcran, setEditingEcran] = useState<Ecran | null>(null);
   const deleteEcran = useDeleteEcran();
   const canWrite = useAuth((s) => s.role) !== "read";
@@ -27,6 +28,7 @@ export function EcranTable({ data, agents, documents }: Props) {
         data={data}
         columns={columns}
         searchPlaceholder="Rechercher un écran..."
+        hideSearch={hideSearch}
         itemLabel="écrans"
         onEdit={setEditingEcran}
         onDelete={(rows) => {

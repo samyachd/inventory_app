@@ -14,7 +14,7 @@ export interface EcranCreatePayload {
   agent_id: number | null;
 }
 
-export type EcranUpdatePayload = EcranCreatePayload;
+export type EcranUpdatePayload = Partial<EcranCreatePayload>;
 
 export async function createEcran(data: EcranCreatePayload): Promise<Ecran> {
   const response = await api.post<Ecran>("/ecrans/", data);

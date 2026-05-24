@@ -24,7 +24,9 @@ export interface OrdinateurCreatePayload {
   agent_id: number | null;
 }
 
-export type OrdinateurUpdatePayload = OrdinateurCreatePayload;
+export type OrdinateurUpdatePayload = Partial<OrdinateurCreatePayload> & {
+  officelicence_id?: number | null;
+};
 
 export async function createOrdinateur(
   data: OrdinateurCreatePayload

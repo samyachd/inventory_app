@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Agent, Ecran, OfficeLicence, Ordinateur } from "@/app/types";
+import type { Agent, Document, Ecran, OfficeLicence, Ordinateur } from "@/app/types";
 import { useAgentColumns } from "@/app/hooks/useAgentColumns";
 import { useDeleteAgent } from "@/app/hooks/useAgent";
 import { AgentCreateDialog } from "./AgentCreateDialog";
@@ -13,9 +13,10 @@ interface Props {
   ordinateurs: Ordinateur[];
   ecrans: Ecran[];
   licences: OfficeLicence[];
+  documents: Document[];
 }
 
-export function AgentTable({ data, ordinateurs, ecrans, licences }: Props) {
+export function AgentTable({ data, ordinateurs, ecrans, licences, documents }: Props) {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [viewingAgent, setViewingAgent] = useState<Agent | null>(null);
   const deleteAgent = useDeleteAgent();
@@ -51,9 +52,11 @@ export function AgentTable({ data, ordinateurs, ecrans, licences }: Props) {
       )}
       <AgentMaterialDialog
         agent={viewingAgent}
+        agents={data}
         ordinateurs={ordinateurs}
         ecrans={ecrans}
         licences={licences}
+        documents={documents}
         onOpenChange={(open) => {
           if (!open) setViewingAgent(null);
         }}

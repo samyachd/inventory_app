@@ -10,9 +10,10 @@ import { useAuth } from "@/app/hooks/useAuth";
 interface Props {
   data: OfficeLicence[];
   documents: Document[];
+  hideSearch?: boolean;
 }
 
-export function OfficeLicenceTable({ data, documents }: Props) {
+export function OfficeLicenceTable({ data, documents, hideSearch }: Props) {
   const [editingLicence, setEditingLicence] = useState<OfficeLicence | null>(null);
   const deleteLicence = useDeleteOfficeLicence();
   const canWrite = useAuth((s) => s.role) !== "read";
@@ -25,6 +26,7 @@ export function OfficeLicenceTable({ data, documents }: Props) {
         data={data}
         columns={columns}
         searchPlaceholder="Rechercher une licence..."
+        hideSearch={hideSearch}
         itemLabel="licences"
         onEdit={setEditingLicence}
         onDelete={(rows) => {

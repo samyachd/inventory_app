@@ -13,9 +13,10 @@ interface Props {
   agents: Agent[];
   documents: Document[];
   licences: OfficeLicence[];
+  hideSearch?: boolean;
 }
 
-export function OrdinateurTable({ data, agents, documents, licences }: Props) {
+export function OrdinateurTable({ data, agents, documents, licences, hideSearch }: Props) {
   const [editingOrdinateur, setEditingOrdinateur] = useState<Ordinateur | null>(null);
   const deleteOrdinateur = useDeleteOrdinateur();
   const canWrite = useAuth((s) => s.role) !== "read";
@@ -28,6 +29,7 @@ export function OrdinateurTable({ data, agents, documents, licences }: Props) {
         data={data}
         columns={columns}
         searchPlaceholder="Rechercher un ordinateur..."
+        hideSearch={hideSearch}
         itemLabel="ordinateurs"
         onEdit={setEditingOrdinateur}
         onDelete={(rows) => {

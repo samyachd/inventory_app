@@ -60,6 +60,7 @@ interface Props<T> {
   toolbarRight?: ReactNode;
   onEdit?: (row: T) => void;
   onDelete?: (rows: T[]) => void;
+  hideSearch?: boolean;
 }
 
 export function DataTable<T>({
@@ -67,11 +68,12 @@ export function DataTable<T>({
   columns,
   searchPlaceholder = "Rechercher...",
   itemLabel = "éléments",
-  pageSize = 300,
+  pageSize = 50,
   toolbarLeft,
   toolbarRight,
   onEdit,
   onDelete,
+  hideSearch = false,
 }: Props<T>) {
   const role = useAuth((s) => s.role);
   const canWrite = role !== "read";
@@ -175,12 +177,14 @@ export function DataTable<T>({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          placeholder={searchPlaceholder}
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="w-full sm:max-w-sm"
-        />
+        {!hideSearch && (
+          <Input
+            placeholder={searchPlaceholder}
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            className="w-full sm:max-w-sm"
+          />
+        )}
         {toolbarLeft}
         <div className="text-sm text-muted-foreground">
           {selectedCount > 0 ? (
