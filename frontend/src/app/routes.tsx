@@ -3,7 +3,6 @@ import { ReactNode } from "react";
 import { Layout } from "./components/Layout";
 import { Login } from "./pages/Login";
 import { Inventaire } from "./pages/Inventaire";
-import { Gestion } from "./pages/Gestion";
 import { Administration } from "./pages/Administration";
 import { Ocr } from "./pages/Ocr";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
@@ -28,14 +27,6 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, Component: Inventaire },
-      {
-        path: "gestion",
-        element: (
-          <RequireRole allow={["admin"]}>
-            <Gestion />
-          </RequireRole>
-        ),
-      },
       {
         path: "administration",
         element: (

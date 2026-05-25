@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Package, SquareChartGantt, ScanLine, Menu, X, ShieldCheck, LogOut } from "lucide-react";
+import { Package, ScanLine, Menu, X, ShieldCheck, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/hooks/useAuth";
 import api from "@/app/services/api";
@@ -28,8 +28,7 @@ export function Layout() {
 
   const navigation = [
     { name: "Inventaire", href: "/", icon: Package },
-    ...(role === "admin" ? [{ name: "Gestion", href: "/gestion", icon: SquareChartGantt }] : []),
-    ...(role === "admin" ? [{ name: "Administration", href: "/administration", icon: ShieldCheck }] : []),
+...(role === "admin" ? [{ name: "Administration", href: "/administration", icon: ShieldCheck }] : []),
     ...(role !== "read" ? [{ name: "OCR", href: "/ocr", icon: ScanLine }] : []),
   ];
 
