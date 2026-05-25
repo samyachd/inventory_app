@@ -51,13 +51,13 @@ export function DocumentEditDialog({
             date_document: document.date_document,
             montant_ttc: document.montant_ttc,
             montant_ht: document.montant_ht,
-            ordinateur_id: document.ordinateur_id,
-            ecran_id: document.ecran_id,
-            office_licence_id: document.office_licence_id,
+            ordinateur_ids: document.ordinateur_ids,
+            ecran_ids: document.ecran_ids,
+            office_licence_ids: document.office_licence_ids,
           }}
-          onSubmit={(data) => {
+          onSubmit={(items) => {
             updateMutation.mutate(
-              { id: document.id, data },
+              { id: document.id, data: items[0] },
               { onSuccess: () => onOpenChange(false) }
             );
           }}

@@ -9,7 +9,7 @@ class OfficeLicenceCreate(BaseModel):
     type_licence: str | None = Field(None, max_length=255)
     fournisseur: str | None = Field(None, max_length=255)
     date_achat: date | None = None
-    clef: str | None = Field(None, max_length=255)
+    clef: str = Field(..., max_length=255)
     mail_activation: str | None = Field(None, max_length=255)
 
 

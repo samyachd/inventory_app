@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import type { Agent, Document, DocumentType, Ecran, Ordinateur } from "@/app/types";
+import type { Agent, Document, DocumentType, Ecran } from "@/app/types";
 import { SortableHeader } from "../components/DataTable/SortableHeader";
 import { DocumentLink } from "../components/DocumentLink";
 import { indexDocsByOwner } from "./useOrdinateurColumns";
@@ -8,7 +8,6 @@ import { QrDownloadButton } from "../components/QrDownloadButton";
 
 interface Options {
   agents: Agent[];
-  ordinateurs: Ordinateur[];
   documents: Document[];
 }
 
@@ -21,20 +20,15 @@ const fmt = {
 
 export function useEcranColumns({
   agents,
-  ordinateurs,
   documents,
 }: Options): ColumnDef<Ecran>[] {
   const agentById = useMemo(
     () => new Map(agents.map((a) => [a.id, a])),
     [agents]
   );
-  const ordiById = useMemo(
-    () => new Map(ordinateurs.map((o) => [o.id, o])),
-    [ordinateurs]
-  );
 
   const docsByEcran = useMemo(
-    () => indexDocsByOwner(documents, "ecran_id"),
+    () => indexDocsByOwner(documents, "ecran_ids"),
     [documents]
   );
 
@@ -58,21 +52,6 @@ export function useEcranColumns({
         <SortableHeader column={column} label='Taille (")' />
       ),
       cell: ({ row }) => fmt.num(row.original.taille),
-    },
-    {
-      accessorKey: "slot",
-      header: ({ column }) => <SortableHeader column={column} label="Slot" />,
-      cell: ({ row }) => fmt.num(row.original.slot),
-    },
-    {
-      id: "ordinateur",
-      header: "PC lié",
-      cell: ({ row }) => {
-        const o = row.original.ordinateur_id
-          ? ordiById.get(row.original.ordinateur_id)
-          : null;
-        return o ? (o.nom_reseau ?? o.tag ?? `#${o.id}`) : "—";
-      },
     },
     {
       accessorKey: "service",

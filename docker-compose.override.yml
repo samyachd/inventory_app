@@ -1,7 +1,19 @@
 services:
   db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "${POSTGRES_PORT}"   # accessible depuis DBeaver/pgAdmin
+      - "${POSTGRES_PORT}:5432"   # accessible depuis DBeaver/pgAdmin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   backend:
     build:
@@ -17,6 +29,9 @@ services:
       - ./data:/data
     environment:
       CLEAN_EXTRACTS_DIR: /data/clean_extracts
+    depends_on:
+      db:
+        condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -42,3 +57,6 @@ services:
   loki:
     ports:
       - "3100:3100"
+
+volumes:
+  pgdata:

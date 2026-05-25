@@ -11,7 +11,7 @@ import { useUsers } from "@/app/hooks/useUser";
 import { UserTable } from "@/app/components/user/UserTable";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { RotateCcw } from "lucide-react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -35,11 +35,12 @@ const ACTION_STYLE: Record<string, string> = {
 };
 
 const TABLE_LABELS: Record<string, string> = {
-  ordinateurs: "Ordinateurs",
-  ecrans:      "Écrans",
-  agents:      "Agents",
-  licences:    "Licences",
-  documents:   "Documents",
+  ordinateurs:  "Ordinateurs",
+  ecrans:       "Écrans",
+  agents:       "Agents",
+  licences:     "Licences",
+  documents:    "Documents",
+  utilisateurs: "Utilisateurs",
 };
 
 // ─── OCR columns (static — no actions needed) ────────────────────────────────
@@ -114,7 +115,7 @@ export function Administration() {
   const queryClient = useQueryClient();
   const [restoringId, setRestoringId] = useState<number | null>(null);
 
-  const { data: logs = [], isLoading: logsLoading } = useLogs({ limit: 500 });
+  const { data: logs = [], isLoading: logsLoading, isError: logsError, refetch: refetchLogs } = useLogs({ limit: 500 });
   const { data: ocrStats = [], isLoading: ocrLoading } = useOcrStats({ limit: 500 });
   const { data: users = [], isLoading: usersLoading } = useUsers();
 
@@ -258,8 +259,16 @@ export function Administration() {
         </TabsContent>
 
         <TabsContent value="logs" className="mt-4">
+          <div className="flex justify-end mb-2">
+            <Button variant="outline" size="sm" onClick={() => refetchLogs()} disabled={logsLoading}>
+              <RefreshCw className={`w-3.5 h-3.5 mr-1 ${logsLoading ? "animate-spin" : ""}`} />
+              Rafraîchir
+            </Button>
+          </div>
           {logsLoading ? (
             <p className="text-sm text-muted-foreground">Chargement…</p>
+          ) : logsError ? (
+            <p className="text-sm text-red-500">Impossible de charger les logs. Vérifiez vos droits ou réessayez.</p>
           ) : (
             <DataTable
               data={logs}

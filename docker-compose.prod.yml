@@ -3,18 +3,18 @@
 #   docker compose --env-file .env.prod \
 #     -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
-# The --env-file flag is required so that ${BACKUP_TARGET} and
-# ${LOKI_BASIC_AUTH} are resolved at compose-parse time (the env_file:
-# directive below only injects vars *into* the container, not into the
-# compose file's own variable substitution).
+# The --env-file flag is required so that ${LOKI_BASIC_AUTH} is resolved at
+# compose-parse time (the env_file: directive only injects vars *into* the
+# container, not into compose's own variable substitution).
 #
 # Required on the host:
 #   /.env.prod                 — POSTGRES_*, GRAFANA_ADMIN_PASSWORD, VITE_API_URL,
-#                                BACKUP_TARGET, LOKI_BASIC_AUTH
+#                                LOKI_BASIC_AUTH
 #   /backend/.env.prod         — SECRET_KEY, MISTRAL_API_KEY, CORS_ORIGINS, etc.
-#   ${BACKUP_TARGET}           — host mount of the NAS backup share (see fstab)
 #   /loki-proxy/htpasswd       — bcrypt entry for the Loki basic-auth user
 #                                (generate with: htpasswd -nbB user password)
+#
+# Backups: managed natively on the DB server. See deploy/DB_SERVER.md.
 
 services:
   frontend:
@@ -33,6 +33,8 @@ services:
     env_file:
       - .env.prod
       - backend/.env.prod
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/').status == 200 else 1)"]
@@ -42,27 +44,8 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  # ─────────────────────────────────────────────────────────────────
-  # Postgres backups → NAS share (mount it on the host first).
-  # /etc/fstab example for an SMB NAS:
-  #   //nas.mairie.local/sauvegardes/mairie  /mnt/mairie-backups  cifs
-  #     credentials=/etc/cifs-mairie,vers=3.0,iocharset=utf8,uid=0,gid=0  0 0
-  # Then set BACKUP_TARGET=/mnt/mairie-backups in /.env.prod.
-  # ─────────────────────────────────────────────────────────────────
-  db-backup:
-    image: prodrigestivill/postgres-backup-local:15
-    restart: unless-stopped
-    env_file:
-      - .env.prod
-    environment:
-      SCHEDULE: "@daily"
-      BACKUP_KEEP_DAYS: 7
-      BACKUP_KEEP_WEEKS: 4
-      BACKUP_KEEP_MONTHS: 12
-      # -Z9 = max gzip; --clean lets restore drop existing objects first.
-      POSTGRES_EXTRA_OPTS: "-Z9 --clean --if-exists"
-    volumes:
-      - ${BACKUP_TARGET}:/backups
+  # Backups are managed natively on the DB server via cron + pg_dump.
+  # See deploy/DB_SERVER.md § Backup script.
 
   prometheus:
     volumes:

@@ -1,0 +1,68 @@
+site_name: Mairie — Système d'Inventaire
+site_description: Documentation du système de gestion d'inventaire informatique de la mairie
+site_author: samyachd
+repo_url: https://github.com/samyachd/mairie
+repo_name: samyachd/mairie
+
+theme:
+  name: material
+  language: fr
+  palette:
+    - scheme: default
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/brightness-7
+        name: Mode sombre
+    - scheme: slate
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Mode clair
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Accueil: index.md
+  - Démarrage rapide: getting-started.md
+  - Architecture: architecture.md
+  - API:
+      - Authentification: api/auth.md
+      - Utilisateurs: api/users.md
+      - Inventaire: api/inventaire.md
+      - Agents: api/agents.md
+      - Ordinateurs: api/ordinateurs.md
+      - Écrans: api/ecrans.md
+      - Licences: api/licences.md
+      - Documents: api/documents.md
+      - QR Codes: api/qrcode.md
+      - Modèle IA: api/model.md
+      - Logs: api/logs.md
+  - Base de données:
+      - Modèles: database/models.md
+      - Migrations: database/migrations.md
+  - Déploiement:
+      - Production: deployment/production.md
+      - Restauration: deployment/restore.md
+  - Développement:
+      - Commandes Make: development/makefile.md
+      - Tests: development/tests.md
+      - Observabilité: development/observability.md

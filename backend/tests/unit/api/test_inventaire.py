@@ -1,22 +1,25 @@
-# -------- GET Methods (list all, list vide, lire, lire inexistant) -----------------
+"""GET /inventaire/ returns the aggregate shape used by the frontend."""
 
-def test_get_license(client, test_license):
-    response = client.get(f"/license/{test_license.id}")
+
+def test_inventaire_empty(admin_client):
+    response = admin_client.get("/inventaire/")
     assert response.status_code == 200
-    data = response.json()
-    assert data["proprietaire"] == "Commune"
-    assert data["tag"] == "OfficeLicense-TEST-001"
+    body = response.json()
+    # All 5 keys present, all empty in a fresh DB
+    for key in ("agents", "ordinateurs", "ecrans", "licences", "documents"):
+        assert key in body
+        assert body[key] == []
 
-def test_liste_license(client, test_license):
-    response = client.get(f"/license")
+
+def test_inventaire_returns_created_entities(admin_client):
+    # Create one agent through the API so we exercise the full stack.
+    create = admin_client.post(
+        "/agents/", json={"nom": "Agent Smith", "email": "smith@mairie.fr"}
+    )
+    assert create.status_code == 201, create.text
+
+    response = admin_client.get("/inventaire/")
     assert response.status_code == 200
-    assert len(response.json()) >= 1
-
-def test_liste_license_vide(client):
-    response = client.get(f"/license")
-    assert response.status_code == 200
-    assert response.json() == []
-
-def test_license_inexistant(client):
-    response = client.get("/license/99999")
-    assert response.status_code == 404
+    body = response.json()
+    assert len(body["agents"]) == 1
+    assert body["agents"][0]["nom"] == "Agent Smith"

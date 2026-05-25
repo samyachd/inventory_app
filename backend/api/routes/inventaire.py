@@ -1,5 +1,5 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from core.dependencies import require_role
 from core.logging_db import log_action
@@ -32,13 +32,17 @@ document = APIRouter(dependencies=[Depends(require_role("user", "admin"))])
 # Inventaire — single fetch for the whole inventory page
 
 @inventaire.get("/", response_model=InventaireRead)
-def read_inventaire(db: Session = Depends(get_db)):
+def read_inventaire(
+    db: Session = Depends(get_db),
+    limit: int = Query(500, ge=1, le=5000),
+    offset: int = Query(0, ge=0),
+):
     return InventaireRead(
-        agents=db.query(Agent).all(),
-        ordinateurs=db.query(Ordinateur).all(),
-        ecrans=db.query(Ecran).all(),
-        licences=db.query(OfficeLicence).all(),
-        documents=db.query(Document).all(),
+        agents=db.query(Agent).offset(offset).limit(limit).all(),
+        ordinateurs=db.query(Ordinateur).offset(offset).limit(limit).all(),
+        ecrans=db.query(Ecran).offset(offset).limit(limit).all(),
+        licences=db.query(OfficeLicence).offset(offset).limit(limit).all(),
+        documents=db.query(Document).offset(offset).limit(limit).all(),
     )
 
 
@@ -274,13 +278,50 @@ def update_ecran(
 
 # Document endpoints
 
+def _resolve_owners(
+    db: Session,
+    ordinateur_ids: list[int],
+    ecran_ids: list[int],
+    office_licence_ids: list[int],
+) -> tuple[list[Ordinateur], list[Ecran], list[OfficeLicence]]:
+    """Resolve owner ID lists to ORM objects, raising 404 on any unknown id."""
+    def fetch(model, ids: list[int]):
+        if not ids:
+            return []
+        unique_ids = list(set(ids))
+        rows = db.query(model).filter(model.id.in_(unique_ids)).all()
+        if len(rows) != len(unique_ids):
+            found = {r.id for r in rows}
+            missing = [i for i in unique_ids if i not in found]
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"{model.__name__} introuvable(s): {missing}",
+            )
+        return rows
+    return (
+        fetch(Ordinateur, ordinateur_ids),
+        fetch(Ecran, ecran_ids),
+        fetch(OfficeLicence, office_licence_ids),
+    )
+
+
 @document.post("/", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
 def create_document(
     doc: DocumentCreate,
     db: Session = Depends(get_db),
     current_user=Depends(require_role("user", "admin")),
 ):
-    db_doc = Document(**doc.model_dump(exclude_unset=True))
+    payload = doc.model_dump()
+    ord_ids = payload.pop("ordinateur_ids", [])
+    ecr_ids = payload.pop("ecran_ids", [])
+    lic_ids = payload.pop("office_licence_ids", [])
+
+    ordis, ecrs, lics = _resolve_owners(db, ord_ids, ecr_ids, lic_ids)
+
+    db_doc = Document(**payload)
+    db_doc.ordinateurs = ordis
+    db_doc.ecrans = ecrs
+    db_doc.office_licences = lics
     db.add(db_doc)
     try:
         db.flush()
@@ -321,8 +362,25 @@ def update_document(
     db_doc = db.query(Document).filter(Document.id == document_id).first()
     if not db_doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document inexistant")
-    for key, value in doc.model_dump(exclude_unset=True).items():
+    payload = doc.model_dump(exclude_unset=True)
+    ord_ids = payload.pop("ordinateur_ids", None)
+    ecr_ids = payload.pop("ecran_ids", None)
+    lic_ids = payload.pop("office_licence_ids", None)
+    for key, value in payload.items():
         setattr(db_doc, key, value)
+    if ord_ids is not None or ecr_ids is not None or lic_ids is not None:
+        ordis, ecrs, lics = _resolve_owners(
+            db,
+            ord_ids if ord_ids is not None else [],
+            ecr_ids if ecr_ids is not None else [],
+            lic_ids if lic_ids is not None else [],
+        )
+        if ord_ids is not None:
+            db_doc.ordinateurs = ordis
+        if ecr_ids is not None:
+            db_doc.ecrans = ecrs
+        if lic_ids is not None:
+            db_doc.office_licences = lics
     log_action(db, current_user.id, "modification", "documents", document_id, db_doc.nom)
     db.commit()
     db.refresh(db_doc)

@@ -45,9 +45,7 @@ export interface Ordinateur extends BaseEquipment {
   ip_address: string | null;
   mac_ethernet: string | null;
   mac_wifi: string | null;
-  clef_wifi: boolean | null;
   lecteur_cd: boolean | null;
-  casque: boolean | null;
   absolute_dell: boolean | null;
   watt: number | null;
 }
@@ -56,9 +54,7 @@ export interface Ordinateur extends BaseEquipment {
 
 export interface Ecran extends BaseEquipment {
   taille: number | null;
-  slot: number | null;
 
-  ordinateur_id: number | null;
   agent_id: number | null;
 }
 
@@ -84,6 +80,8 @@ export interface Agent {
   nom: string;
   email: string | null;
   telephone: string | null;
+  clef_wifi: boolean | null;
+  casque: boolean | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -101,9 +99,9 @@ export interface Document {
   date_document: string;
   montant_ttc: number | null;
   montant_ht: number | null;
-  ordinateur_id: number | null;
-  ecran_id: number | null;
-  office_licence_id: number | null;
+  ordinateur_ids: number[];
+  ecran_ids: number[];
+  office_licence_ids: number[];
   created_at: string;
   updated_at: string | null;
 }

@@ -70,11 +70,11 @@ export function OfficeLicenceCreateDialog({ documents, disabled }: Props) {
 
         {showDocStep ? (
           <DocumentForm
-            fixedOwner={{ office_licence_id: createdLicenceId }}
+            fixedOwner={{ office_licence_ids: createdLicenceId != null ? [createdLicenceId] : [] }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
-            onSubmit={(data) => {
-              createDoc.mutate(data, { onSuccess: reset });
+            onSubmit={(items) => {
+              createDoc.mutate(items[0], { onSuccess: reset });
             }}
           />
         ) : (

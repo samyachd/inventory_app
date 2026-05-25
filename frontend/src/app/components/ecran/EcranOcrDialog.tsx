@@ -13,7 +13,7 @@ import { EcranForm } from "./EcranForm";
 import { DocumentForm } from "../document/DocumentForm";
 import { useCreateEcran } from "@/app/hooks/useEcran";
 import { useCreateDocument } from "@/app/hooks/useDocument";
-import type { Agent, Document as DocumentT, Ordinateur } from "@/app/types";
+import type { Agent, Document as DocumentT } from "@/app/types";
 import type { OcrExtractedData } from "@/app/services/document";
 import {
   isDocumentAlreadyRegistered,
@@ -22,11 +22,10 @@ import {
 
 interface Props {
   agents: Agent[];
-  ordinateurs: Ordinateur[];
   documents: DocumentT[];
 }
 
-export function EcranOcrDialog({ agents, ordinateurs, documents }: Props) {
+export function EcranOcrDialog({ agents, documents }: Props) {
   const [open, setOpen] = useState(false);
   const [pendingOcr, setPendingOcr] = useState<OcrExtractedData | null>(null);
   const [createdEcranId, setCreatedEcranId] = useState<number | null>(null);
@@ -65,15 +64,14 @@ export function EcranOcrDialog({ agents, ordinateurs, documents }: Props) {
 
         {showDocStep ? (
           <DocumentForm
-            fixedOwner={{ ecran_id: createdEcranId }}
+            fixedOwner={{ ecran_ids: createdEcranId != null ? [createdEcranId] : [] }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
-            onSubmit={(data) => createDoc.mutate(data, { onSuccess: reset })}
+            onSubmit={(items) => createDoc.mutate(items[0], { onSuccess: reset })}
           />
         ) : (
           <EcranForm
             agents={agents}
-            ordinateurs={ordinateurs}
             isPending={createEcran.isPending}
             onOcrExtracted={setPendingOcr}
             onSubmit={(data) =>

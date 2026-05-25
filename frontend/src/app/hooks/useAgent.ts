@@ -12,6 +12,7 @@ export function useDeleteAgent() {
     mutationFn: deleteAgent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }
@@ -22,6 +23,7 @@ export function useCreateAgent() {
     mutationFn: createAgent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }
@@ -33,6 +35,7 @@ export function useUpdateAgent() {
       updateAgent(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }

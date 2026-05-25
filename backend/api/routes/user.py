@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from core.dependencies import require_role
+from core.logging_db import log_action
 from core.security import hacher_mot_de_passe, valider_force_mot_de_passe
 from db.models.user import User
 from db.session import get_db
@@ -14,7 +15,7 @@ user = APIRouter()
 def create_user(
     user_data: UserCreate,
     db: Session = Depends(get_db),
-    _=Depends(require_role("admin")),
+    current_user=Depends(require_role("admin")),
 ):
     if db.query(User).filter(User.email == user_data.email).first():
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
@@ -30,6 +31,8 @@ def create_user(
         role=user_data.role,
     )
     db.add(db_user)
+    db.flush()
+    log_action(db, current_user.id, "creation", "utilisateurs", db_user.id, db_user.email)
     db.commit()
     db.refresh(db_user)
     logger.info(f"Utilisateur créé : {db_user.id}")
@@ -43,25 +46,12 @@ def read_users(
 ):
     return db.query(User).all()
 
-
-@user.get("/{user_id}", response_model=UserRead)
-def read_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-    _=Depends(require_role("user", "admin")),
-):
-    db_user = db.query(User).filter(User.id == user_id).first()
-    if not db_user:
-        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
-    return db_user
-
-
 @user.put("/{user_id}", response_model=UserRead)
 def update_user(
     user_id: int,
     user_data: UserUpdate,
     db: Session = Depends(get_db),
-    _=Depends(require_role("admin")),
+    current_user=Depends(require_role("admin")),
 ):
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
@@ -77,6 +67,8 @@ def update_user(
     for key, value in data.items():
         setattr(db_user, key, value)
 
+    changed = ", ".join(data.keys()) or "password"
+    log_action(db, current_user.id, "modification", "utilisateurs", user_id, changed)
     db.commit()
     db.refresh(db_user)
     logger.info(f"Utilisateur mis à jour : {user_id}")
@@ -87,11 +79,12 @@ def update_user(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    _=Depends(require_role("admin")),
+    current_user=Depends(require_role("admin")),
 ):
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    log_action(db, current_user.id, "suppression", "utilisateurs", user_id, db_user.email)
     db.delete(db_user)
     db.commit()
     logger.info(f"Utilisateur supprimé : {user_id}")

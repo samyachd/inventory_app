@@ -1,15 +1,19 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { Package, SquareChartGantt, ScanLine, Menu, X, ShieldCheck, LogOut } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/app/hooks/useAuth";
 import api from "@/app/services/api";
 
 export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const role = useAuth((s) => s.role);
   const logout = useAuth((s) => s.logout);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     try {
@@ -40,9 +44,9 @@ export function Layout() {
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } bg-white border-r border-gray-200 w-64`}
+        className={`fixed top-0 left-0 z-40 h-screen transition-transform bg-white border-r border-gray-200 w-64 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
       >
         <div className="h-full px-3 py-4 flex flex-col">
           <div className="flex items-center justify-between mb-8 px-3">
@@ -87,7 +91,7 @@ export function Layout() {
       </aside>
 
       {/* Main Content */}
-      <div className={`${sidebarOpen ? "lg:ml-64" : ""} transition-all`}>
+      <div className="lg:ml-64 transition-all">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
           <div className="px-4 py-4 sm:px-6 lg:px-8">
@@ -98,7 +102,7 @@ export function Layout() {
               >
                 <Menu className="w-6 h-6" />
               </button>
-              <h1 className="text-xl font-semibold text-gray-900">
+              <h1 className="text-base sm:text-xl font-semibold text-gray-900 truncate">
                 Système de gestion d'inventaire
               </h1>
             </div>
@@ -106,7 +110,7 @@ export function Layout() {
         </header>
 
         {/* Page Content */}
-        <main className="px-4 py-6 sm:px-6 lg:px-8">
+        <main className="px-2 py-4 sm:px-6 lg:px-8">
           <Outlet />
         </main>
       </div>

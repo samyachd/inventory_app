@@ -5,8 +5,7 @@ export interface EcranCreatePayload {
   tag: string | null;
   marque: string | null;
   taille: number | null;
-  slot: number | null;
-  ordinateur_id: number | null;
+  proprietaire: string | null;
   service: string | null;
   batiment: string | null;
   fournisseur: string | null;
@@ -15,7 +14,7 @@ export interface EcranCreatePayload {
   agent_id: number | null;
 }
 
-export type EcranUpdatePayload = EcranCreatePayload;
+export type EcranUpdatePayload = Partial<EcranCreatePayload>;
 
 export async function createEcran(data: EcranCreatePayload): Promise<Ecran> {
   const response = await api.post<Ecran>("/ecrans/", data);

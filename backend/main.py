@@ -1,17 +1,36 @@
+import asyncio
 import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 from core import settings
+from core.tasks import purge_expired_tokens, prune_ocr_stats, check_warranty_expiry
 from api.routes import ordinateur, user, auth, agent, ecran, licence, document, inventaire, model, log, schema_router, qrcode_router
 from fastapi.middleware.cors import CORSMiddleware
 from core.logger import setup_logger, logger
 
 setup_logger()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    tasks = [
+        asyncio.create_task(purge_expired_tokens()),
+        asyncio.create_task(prune_ocr_stats()),
+        asyncio.create_task(check_warranty_expiry()),
+    ]
+    yield
+    for t in tasks:
+        t.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.VERSION,
     debug=settings.DEBUG,
+    lifespan=lifespan,
 )
 Instrumentator().instrument(app).expose(app)
 logger.info(f"Démarrage de l'application {settings.APP_NAME} version {settings.VERSION}")

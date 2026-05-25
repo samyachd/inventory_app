@@ -13,6 +13,7 @@ export function useDeleteOfficeLicence() {
     mutationFn: deleteLicence,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }
@@ -23,6 +24,7 @@ export function useCreateOfficeLicence() {
     mutationFn: createLicence,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }
@@ -34,6 +36,7 @@ export function useUpdateOfficeLicence() {
       updateLicence(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }

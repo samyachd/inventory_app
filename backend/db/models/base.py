@@ -44,7 +44,7 @@ class BaseEquipement(BaseEntry):
         nullable=True,
         index=True,
     )
-    tag: Mapped[str | None] = mapped_column(String(50), unique=True, nullable=True)
+    tag: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     marque: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     fin_garantie: Mapped[dt.date | None] = mapped_column(Date, nullable=True, index=True)
     date_achat: Mapped[dt.date | None] = mapped_column(Date, nullable=True, index=True)

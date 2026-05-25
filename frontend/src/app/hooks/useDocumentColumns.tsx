@@ -41,19 +41,20 @@ export function useDocumentColumns({
   const licenceById = useMemo(() => byId(licences), [licences]);
 
   const ownerLabel = (doc: Document): string => {
-    if (doc.ordinateur_id) {
-      const o = ordiById.get(doc.ordinateur_id);
-      return `Ordi ${o?.nom_reseau ?? o?.tag ?? `#${doc.ordinateur_id}`}`;
+    const parts: string[] = [];
+    for (const id of doc.ordinateur_ids) {
+      const o = ordiById.get(id);
+      parts.push(`Ordi ${o?.nom_reseau ?? o?.tag ?? `#${id}`}`);
     }
-    if (doc.ecran_id) {
-      const e = ecranById.get(doc.ecran_id);
-      return `Écran ${e?.tag ?? `#${doc.ecran_id}`}`;
+    for (const id of doc.ecran_ids) {
+      const e = ecranById.get(id);
+      parts.push(`Écran ${e?.tag ?? `#${id}`}`);
     }
-    if (doc.office_licence_id) {
-      const l = licenceById.get(doc.office_licence_id);
-      return `Licence ${l?.version ?? `#${doc.office_licence_id}`}`;
+    for (const id of doc.office_licence_ids) {
+      const l = licenceById.get(id);
+      parts.push(`Licence ${l?.version ?? `#${id}`}`);
     }
-    return "—";
+    return parts.length > 0 ? parts.join(" · ") : "—";
   };
 
   return [

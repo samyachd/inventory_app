@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -11,18 +12,26 @@ import type {
 import type { DocumentCreatePayload } from "@/app/services/document";
 
 interface OwnerLink {
-  ordinateur_id?: number | null;
-  ecran_id?: number | null;
-  office_licence_id?: number | null;
+  ordinateur_ids?: number[];
+  ecran_ids?: number[];
+  office_licence_ids?: number[];
+}
+
+interface FormValues {
+  type: DocumentType;
+  nom: string;
+  numero: string;
+  path: string;
+  date_document: string;
+  montant_ttc: number | null;
+  montant_ht: number | null;
 }
 
 interface Props {
-  onSubmit: (data: DocumentCreatePayload) => void;
+  onSubmit: (items: DocumentCreatePayload[]) => void;
   isPending?: boolean;
   defaultValues?: Partial<DocumentCreatePayload>;
-  /** Lock the linked equipment when the form is opened from a two-step flow */
   fixedOwner?: OwnerLink;
-  /** Optional pickers for standalone use (from the Documents tab) */
   ordinateurs?: Ordinateur[];
   ecrans?: Ecran[];
   licences?: OfficeLicence[];
@@ -35,6 +44,38 @@ const TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
   { value: "facture", label: "Facture" },
 ];
 
+function CheckList<T extends { id: number }>({
+  items,
+  selected,
+  onToggle,
+  label,
+}: {
+  items: T[];
+  selected: number[];
+  onToggle: (id: number, checked: boolean) => void;
+  label: (item: T) => string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+      {items.map((item) => (
+        <label
+          key={item.id}
+          className="flex items-center gap-2 text-sm cursor-pointer select-none"
+        >
+          <input
+            type="checkbox"
+            className="accent-primary"
+            checked={selected.includes(item.id)}
+            onChange={(e) => onToggle(item.id, e.target.checked)}
+          />
+          {label(item)}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export function DocumentForm({
   onSubmit,
   isPending,
@@ -45,12 +86,30 @@ export function DocumentForm({
   licences,
   submitLabel = "Enregistrer le document",
 }: Props) {
+  const [selectedOrds, setSelectedOrds] = useState<number[]>(
+    defaultValues?.ordinateur_ids ?? []
+  );
+  const [selectedEcrans, setSelectedEcrans] = useState<number[]>(
+    defaultValues?.ecran_ids ?? []
+  );
+  const [selectedLicences, setSelectedLicences] = useState<number[]>(
+    defaultValues?.office_licence_ids ?? []
+  );
+
+  const toggle = (
+    setter: React.Dispatch<React.SetStateAction<number[]>>
+  ) => (id: number, checked: boolean) => {
+    setter((prev) =>
+      checked ? [...prev, id] : prev.filter((x) => x !== id)
+    );
+  };
+
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<DocumentCreatePayload>({
+  } = useForm<FormValues>({
     defaultValues: {
       type: defaultValues?.type ?? "facture",
       nom: defaultValues?.nom ?? "",
@@ -60,21 +119,43 @@ export function DocumentForm({
         defaultValues?.date_document ?? new Date().toISOString().split("T")[0],
       montant_ttc: defaultValues?.montant_ttc ?? null,
       montant_ht: defaultValues?.montant_ht ?? null,
-      ordinateur_id:
-        fixedOwner?.ordinateur_id ?? defaultValues?.ordinateur_id ?? null,
-      ecran_id: fixedOwner?.ecran_id ?? defaultValues?.ecran_id ?? null,
-      office_licence_id:
-        fixedOwner?.office_licence_id ??
-        defaultValues?.office_licence_id ??
-        null,
     },
   });
 
   const type = watch("type");
   const isFacture = type === "facture";
 
+  function buildItem(values: FormValues): DocumentCreatePayload {
+    const base: DocumentCreatePayload = {
+      type: values.type,
+      nom: values.nom,
+      numero: values.numero,
+      path: values.path,
+      date_document: values.date_document,
+      montant_ttc: isFacture ? values.montant_ttc : null,
+      montant_ht: isFacture ? values.montant_ht : null,
+      ordinateur_ids: selectedOrds,
+      ecran_ids: selectedEcrans,
+      office_licence_ids: selectedLicences,
+    };
+
+    if (fixedOwner) {
+      return {
+        ...base,
+        ordinateur_ids: fixedOwner.ordinateur_ids ?? base.ordinateur_ids,
+        ecran_ids: fixedOwner.ecran_ids ?? base.ecran_ids,
+        office_licence_ids:
+          fixedOwner.office_licence_ids ?? base.office_licence_ids,
+      };
+    }
+    return base;
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form
+      onSubmit={handleSubmit((values) => onSubmit([buildItem(values)]))}
+      className="space-y-4"
+    >
       <div>
         <Label htmlFor="type">Type *</Label>
         <select
@@ -136,63 +217,62 @@ export function DocumentForm({
       </div>
 
       {!fixedOwner && (
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="ordinateur_id">Ordinateur</Label>
-            <select
-              id="ordinateur_id"
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              {...register("ordinateur_id", {
-                setValueAs: (v) => (v === "" ? null : Number(v)),
-              })}
-            >
-              <option value="">— Aucun —</option>
-              {ordinateurs?.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.nom_reseau ?? o.tag ?? `#${o.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="ecran_id">Écran</Label>
-            <select
-              id="ecran_id"
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              {...register("ecran_id", {
-                setValueAs: (v) => (v === "" ? null : Number(v)),
-              })}
-            >
-              <option value="">— Aucun —</option>
-              {ecrans?.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.tag ?? `#${e.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="office_licence_id">Licence</Label>
-            <select
-              id="office_licence_id"
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              {...register("office_licence_id", {
-                setValueAs: (v) => (v === "" ? null : Number(v)),
-              })}
-            >
-              <option value="">— Aucune —</option>
-              {licences?.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.version ?? `#${l.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="space-y-3">
+          <Label>Équipements liés</Label>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Sélectionnez les équipements concernés. Le document peut être lié à
+            plusieurs ordinateurs, écrans et licences à la fois.
+          </p>
+
+          {(ordinateurs?.length ?? 0) > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Ordinateurs ({selectedOrds.length} sélectionné
+                {selectedOrds.length > 1 ? "s" : ""})
+              </p>
+              <CheckList
+                items={ordinateurs!}
+                selected={selectedOrds}
+                onToggle={toggle(setSelectedOrds)}
+                label={(o) => o.nom_reseau ?? o.tag ?? `#${o.id}`}
+              />
+            </div>
+          )}
+
+          {(ecrans?.length ?? 0) > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Écrans ({selectedEcrans.length} sélectionné
+                {selectedEcrans.length > 1 ? "s" : ""})
+              </p>
+              <CheckList
+                items={ecrans!}
+                selected={selectedEcrans}
+                onToggle={toggle(setSelectedEcrans)}
+                label={(e) => e.tag ?? `#${e.id}`}
+              />
+            </div>
+          )}
+
+          {(licences?.length ?? 0) > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Licences ({selectedLicences.length} sélectionné
+                {selectedLicences.length > 1 ? "s" : ""})
+              </p>
+              <CheckList
+                items={licences!}
+                selected={selectedLicences}
+                onToggle={toggle(setSelectedLicences)}
+                label={(l) => l.version ?? `#${l.id}`}
+              />
+            </div>
+          )}
         </div>
       )}
 
       {isFacture && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="montant_ht">Montant HT</Label>
             <Input

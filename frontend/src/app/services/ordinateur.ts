@@ -8,6 +8,7 @@ export interface OrdinateurCreatePayload {
   type_equipement: string | null;
   os: string | null;
   ram: string | null;
+  proprietaire: string | null;
   service: string | null;
   batiment: string | null;
   fournisseur: string | null;
@@ -16,15 +17,16 @@ export interface OrdinateurCreatePayload {
   ip_address: string | null;
   mac_ethernet: string | null;
   mac_wifi: string | null;
-  clef_wifi: boolean | null;
+  tag_chargeur: string | null;
   lecteur_cd: boolean | null;
-  casque: boolean | null;
   absolute_dell: boolean | null;
   watt: number | null;
   agent_id: number | null;
 }
 
-export type OrdinateurUpdatePayload = OrdinateurCreatePayload;
+export type OrdinateurUpdatePayload = Partial<OrdinateurCreatePayload> & {
+  officelicence_id?: number | null;
+};
 
 export async function createOrdinateur(
   data: OrdinateurCreatePayload

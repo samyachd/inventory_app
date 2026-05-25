@@ -5,7 +5,6 @@ from db.models.base import BaseEquipement
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from db.models.ecran import Ecran
     from db.models.agent import Agent
     from db.models.document import Document
     from db.models.office_licence import OfficeLicence
@@ -23,13 +22,12 @@ class Ordinateur(BaseEquipement):
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     mac_ethernet: Mapped[str | None] = mapped_column(String(17), nullable=True, unique=True)
     mac_wifi: Mapped[str | None] = mapped_column(String(17), nullable=True, unique=True)
-    clef_wifi: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     lecteur_cd: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    casque: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     absolute_dell: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     watt: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    ecran: Mapped[Optional[list["Ecran"]]] = relationship(back_populates="ordinateur", passive_deletes=True)
     office_licence: Mapped[Optional["OfficeLicence"]] = relationship(back_populates="ordinateur", passive_deletes=True)
     agent: Mapped[Optional["Agent"]] = relationship(back_populates="ordinateur", passive_deletes=True)
-    documents: Mapped[list["Document"]] = relationship(back_populates="ordinateur", passive_deletes=True)
+    documents: Mapped[list["Document"]] = relationship(
+        secondary="document_ordinateur", back_populates="ordinateurs"
+    )

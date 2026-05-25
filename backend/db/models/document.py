@@ -3,15 +3,19 @@ import datetime as dt
 from enum import Enum as PyEnum
 from sqlalchemy import (
     CheckConstraint,
+    Column,
     Date,
     Enum,
     Float,
     ForeignKey,
+    Integer,
     String,
+    Table,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from db.db import Base
 from db.models.base import BaseEntry
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from db.models.ordinateur import Ordinateur
@@ -23,6 +27,32 @@ class DocumentType(str, PyEnum):
     devis = "devis"
     bon_de_commande = "bon_de_commande"
     facture = "facture"
+
+
+# ── Many-to-many join tables ──────────────────────────────────────────────
+# Declared at module scope so both Document and the owner models can reference
+# them via `secondary=...`.
+
+document_ordinateur = Table(
+    "document_ordinateur",
+    Base.metadata,
+    Column("document_id", Integer, ForeignKey("document.id", ondelete="CASCADE"), primary_key=True),
+    Column("ordinateur_id", Integer, ForeignKey("ordinateur.id", ondelete="CASCADE"), primary_key=True),
+)
+
+document_ecran = Table(
+    "document_ecran",
+    Base.metadata,
+    Column("document_id", Integer, ForeignKey("document.id", ondelete="CASCADE"), primary_key=True),
+    Column("ecran_id", Integer, ForeignKey("ecran.id", ondelete="CASCADE"), primary_key=True),
+)
+
+document_office_licence = Table(
+    "document_office_licence",
+    Base.metadata,
+    Column("document_id", Integer, ForeignKey("document.id", ondelete="CASCADE"), primary_key=True),
+    Column("office_licence_id", Integer, ForeignKey("office_licence.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class Document(BaseEntry):
@@ -42,29 +72,17 @@ class Document(BaseEntry):
     montant_ttc: Mapped[float | None] = mapped_column(Float, nullable=True)
     montant_ht: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    ordinateur_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ordinateur.id", ondelete="SET NULL"), nullable=True, index=True
+    ordinateurs: Mapped[list["Ordinateur"]] = relationship(
+        secondary=document_ordinateur, back_populates="documents"
     )
-    ecran_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ecran.id", ondelete="SET NULL"), nullable=True, index=True
+    ecrans: Mapped[list["Ecran"]] = relationship(
+        secondary=document_ecran, back_populates="documents"
     )
-    office_licence_id: Mapped[int | None] = mapped_column(
-        ForeignKey("office_licence.id", ondelete="SET NULL"), nullable=True, index=True
-    )
-
-    ordinateur: Mapped[Optional["Ordinateur"]] = relationship(back_populates="documents")
-    ecran: Mapped[Optional["Ecran"]] = relationship(back_populates="documents")
-    office_licence: Mapped[Optional["OfficeLicence"]] = relationship(
-        back_populates="documents"
+    office_licences: Mapped[list["OfficeLicence"]] = relationship(
+        secondary=document_office_licence, back_populates="documents"
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "(CASE WHEN ordinateur_id IS NOT NULL THEN 1 ELSE 0 END "
-            "+ CASE WHEN ecran_id IS NOT NULL THEN 1 ELSE 0 END "
-            "+ CASE WHEN office_licence_id IS NOT NULL THEN 1 ELSE 0 END) <= 1",
-            name="ck_document_single_owner",
-        ),
         CheckConstraint(
             "type = 'facture' OR (montant_ttc IS NULL AND montant_ht IS NULL)",
             name="ck_document_montant_only_facture",

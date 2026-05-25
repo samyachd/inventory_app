@@ -10,10 +10,10 @@ class BaseEquipmentCreate(BaseModel):
     batiment: str | None = Field(None, max_length=255)
     type_equipement: str | None = Field(None, max_length=255)
     fournisseur: str | None = Field(None, max_length=255)
-    tag: str | None = Field(None, max_length=50)
+    tag: str = Field(..., max_length=50)
     marque: str | None = Field(None, max_length=255)
     fin_garantie: date | None = None
-    date_achat: date  # obligatoire en DB (nullable=False)
+    date_achat: date | None = None
 
 
 class BaseEquipmentUpdate(BaseModel):

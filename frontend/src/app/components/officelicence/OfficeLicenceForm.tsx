@@ -30,8 +30,7 @@ export function OfficeLicenceForm({
     defaultValues: {
       version: defaultValues?.version ?? "",
       type_licence: defaultValues?.type_licence ?? "",
-      date_achat:
-        defaultValues?.date_achat ?? new Date().toISOString().split("T")[0],
+      date_achat: defaultValues?.date_achat ?? "",
       fournisseur: defaultValues?.fournisseur ?? "",
       clef: defaultValues?.clef ?? "",
       mail_activation: defaultValues?.mail_activation ?? "",
@@ -86,8 +85,14 @@ export function OfficeLicenceForm({
       </div>
 
       <div>
-        <Label htmlFor="clef">Clé d'activation</Label>
-        <Input id="clef" {...register("clef")} />
+        <Label htmlFor="clef">Clé d'activation *</Label>
+        <Input
+          id="clef"
+          {...register("clef", { required: "La clé d'activation est obligatoire" })}
+        />
+        {errors.clef && (
+          <p className="text-sm text-red-600 mt-1">{errors.clef.message}</p>
+        )}
       </div>
 
       <div>

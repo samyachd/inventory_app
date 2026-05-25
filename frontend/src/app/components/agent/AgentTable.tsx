@@ -1,22 +1,28 @@
 import { useState } from "react";
-import type { Agent } from "@/app/types";
+import type { Agent, Document, Ecran, OfficeLicence, Ordinateur } from "@/app/types";
 import { useAgentColumns } from "@/app/hooks/useAgentColumns";
 import { useDeleteAgent } from "@/app/hooks/useAgent";
 import { AgentCreateDialog } from "./AgentCreateDialog";
 import { AgentEditDialog } from "./AgentEditDialog";
+import { AgentMaterialDialog } from "./AgentMaterialDialog";
 import { DataTable } from "../DataTable/DataTable";
 import { useAuth } from "@/app/hooks/useAuth";
 
 interface Props {
   data: Agent[];
+  ordinateurs: Ordinateur[];
+  ecrans: Ecran[];
+  licences: OfficeLicence[];
+  documents: Document[];
 }
 
-export function AgentTable({ data }: Props) {
+export function AgentTable({ data, ordinateurs, ecrans, licences, documents }: Props) {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [viewingAgent, setViewingAgent] = useState<Agent | null>(null);
   const deleteAgent = useDeleteAgent();
   const canWrite = useAuth((s) => s.role) !== "read";
 
-  const columns = useAgentColumns();
+  const columns = useAgentColumns({ onView: setViewingAgent });
 
   return (
     <>
@@ -44,6 +50,17 @@ export function AgentTable({ data }: Props) {
           }}
         />
       )}
+      <AgentMaterialDialog
+        agent={viewingAgent}
+        agents={data}
+        ordinateurs={ordinateurs}
+        ecrans={ecrans}
+        licences={licences}
+        documents={documents}
+        onOpenChange={(open) => {
+          if (!open) setViewingAgent(null);
+        }}
+      />
     </>
   );
 }

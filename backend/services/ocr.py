@@ -8,10 +8,20 @@ from core.settings import settings
 client = Mistral(api_key=settings.MISTRAL_API_KEY)
 
 CHAMPS = [
-    "type_document", "fournisseur", "montant_ttc", "montant_ht",
-    "date_document", "numero_document", "marque",
-    "numero_de_commande", "tag", "date_achat", "fin_garantie",
-    "type_equipement",
+    # Document
+    "type_document", "numero_document", "numero_de_commande",
+    "date_document", "montant_ttc", "montant_ht",
+    # Common equipment
+    "type_equipement", "marque", "tag", "fournisseur",
+    "date_achat", "fin_garantie", "proprietaire", "service", "batiment",
+    # Ordinateur-specific
+    "ram", "os", "nom_reseau", "ip_address",
+    "mac_ethernet", "mac_wifi", "tag_chargeur", "watt",
+    "clef_wifi", "lecteur_cd", "casque", "absolute_dell",
+    # Ecran-specific
+    "taille",
+    # Licence-specific
+    "type_licence", "version_logiciel", "clef_licence", "mail_activation",
 ]
 
 
@@ -46,29 +56,59 @@ async def extraire_document(contenu: bytes, type_mime: str) -> dict:
         messages=[
             {
                 "role": "user",
-                "content": f"""Extrais TOUS les équipements listés dans ce document sous forme d'un tableau JSON.
-Chaque élément du tableau représente UN équipement physique distinct.
+                "content": f"""Extrais TOUS les équipements et licences listés dans ce document sous forme d'un tableau JSON.
+Chaque élément du tableau représente UN équipement physique distinct OU UNE licence logicielle.
 
-Pour chaque équipement, extrais :
-- type_document (UN SEUL parmi 'devis', 'bon_de_commande', 'facture')
-- type_equipement (UN SEUL parmi 'PC FIXE', 'PC PORTABLE', 'ECRAN', 'AUTRE')
-- marque
-- tag (numéro de série ou référence individuelle de l'équipement — doit être UNIQUE par équipement)
-- fournisseur
-- date_document (format YYYY-MM-DD)
-- numero_document
-- numero_de_commande
-- date_achat (format YYYY-MM-DD)
-- fin_garantie (format YYYY-MM-DD)
-- montant_ttc (prix unitaire TTC, pas le total de la ligne)
-- montant_ht (prix unitaire HT)
+CHAMPS À EXTRAIRE pour chaque élément :
 
-Règles STRICTES :
-- Chaque tag ne doit apparaître QU'UNE SEULE fois dans le tableau. Ne duplique jamais un tag.
-- Si le document liste des tags individuels (ex: SN001, SN002, SN003), crée un élément par tag.
-- Si une ligne indique une quantité sans tags individuels (ex: "6x Dell"), crée exactement autant d'éléments que la quantité, chacun avec tag null.
+-- Champs liés au document (communs, répète dans chaque élément) --
+- type_document       : UN SEUL parmi 'devis', 'bon_de_commande', 'facture'
+- numero_document     : numéro du document (ex: FA-2024-001)
+- numero_de_commande  : numéro de commande si différent du numéro de document
+- date_document       : date du document (YYYY-MM-DD)
+- montant_ttc         : prix unitaire TTC (décimal, uniquement pour les factures)
+- montant_ht          : prix unitaire HT (décimal, uniquement pour les factures)
+
+-- Champs communs à tous les équipements --
+- type_equipement : UN SEUL parmi 'PC FIXE', 'PC PORTABLE', 'ECRAN', 'AUTRE', 'LICENCE'
+- marque          : marque/fabricant (ex: Dell, HP, LG, Microsoft)
+- tag             : numéro de série ou référence individuelle UNIQUE par équipement
+- fournisseur     : nom du fournisseur/vendeur
+- date_achat      : date d'achat (YYYY-MM-DD)
+- fin_garantie    : date de fin de garantie (YYYY-MM-DD)
+- proprietaire    : nom du propriétaire ou utilisateur si mentionné
+- service         : service ou département destinataire si mentionné
+- batiment        : bâtiment ou local destinataire si mentionné
+
+-- Champs spécifiques aux ordinateurs (PC FIXE, PC PORTABLE) --
+- ram          : mémoire vive (ex: '8 Go', '16 Go', '32 Go')
+- os           : système d'exploitation (ex: 'Windows 11 Pro', 'Ubuntu 22.04')
+- nom_reseau   : nom d'hôte réseau / hostname si mentionné
+- ip_address   : adresse IP si mentionnée (ex: '192.168.1.10')
+- mac_ethernet : adresse MAC Ethernet si mentionnée (format XX:XX:XX:XX:XX:XX)
+- mac_wifi     : adresse MAC WiFi si mentionnée (format XX:XX:XX:XX:XX:XX)
+- tag_chargeur : référence ou tag du chargeur associé si mentionné
+- watt         : consommation électrique en watts (entier)
+- clef_wifi    : true si une clé WiFi USB est incluse, false sinon, null si non mentionné
+- lecteur_cd   : true si un lecteur CD/DVD est inclus, false sinon, null si non mentionné
+- casque       : true si un casque audio est inclus, false sinon, null si non mentionné
+- absolute_dell: true si Absolute Dell / DDS est mentionné, false sinon, null si non mentionné
+
+-- Champs spécifiques aux écrans (ECRAN) --
+- taille : taille en pouces (décimal, ex: 24.0, 27.0)
+
+-- Champs spécifiques aux licences logicielles (LICENCE) --
+- type_licence     : type de licence (ex: 'OEM', 'Volume', 'Retail', 'Abonnement')
+- version_logiciel : version du logiciel (ex: 'Microsoft 365', 'Office 2021 Pro')
+- clef_licence     : clé de produit si mentionnée (ex: 'XXXXX-XXXXX-XXXXX-XXXXX-XXXXX')
+- mail_activation  : adresse email d'activation si mentionnée
+
+RÈGLES STRICTES :
+- Chaque tag ne doit apparaître QU'UNE SEULE fois. Ne duplique jamais un tag.
+- Si le document liste des tags individuels (SN001, SN002...), crée UN élément par tag.
+- Si une ligne indique une quantité sans tags (ex: "6x Dell OptiPlex"), crée EXACTEMENT autant d'éléments que la quantité, chacun avec tag null.
 - Si un champ est commun à tous (fournisseur, date_document...), répète-le dans chaque élément.
-- Mets null pour tout champ absent. Ne devine pas.
+- Mets null pour tout champ absent ou non mentionné. Ne devine pas, n'hallucine pas.
 - Si aucun équipement n'est identifiable, retourne [].
 
 Document :

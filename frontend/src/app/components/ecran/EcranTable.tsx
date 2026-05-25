@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Agent, Document, Ecran, Ordinateur } from "@/app/types";
+import type { Agent, Document, Ecran } from "@/app/types";
 import { useEcranColumns } from "@/app/hooks/useEcranColumns";
 import { useDeleteEcran } from "@/app/hooks/useEcran";
 import { EcranCreateDialog } from "./EcranCreateDialog";
@@ -11,16 +11,16 @@ import { useAuth } from "@/app/hooks/useAuth";
 interface Props {
   data: Ecran[];
   agents: Agent[];
-  ordinateurs: Ordinateur[];
   documents: Document[];
+  hideSearch?: boolean;
 }
 
-export function EcranTable({ data, agents, ordinateurs, documents }: Props) {
+export function EcranTable({ data, agents, documents, hideSearch }: Props) {
   const [editingEcran, setEditingEcran] = useState<Ecran | null>(null);
   const deleteEcran = useDeleteEcran();
   const canWrite = useAuth((s) => s.role) !== "read";
 
-  const columns = useEcranColumns({ agents, ordinateurs, documents });
+  const columns = useEcranColumns({ agents, documents });
 
   return (
     <>
@@ -28,6 +28,7 @@ export function EcranTable({ data, agents, ordinateurs, documents }: Props) {
         data={data}
         columns={columns}
         searchPlaceholder="Rechercher un écran..."
+        hideSearch={hideSearch}
         itemLabel="écrans"
         onEdit={setEditingEcran}
         onDelete={(rows) => {
@@ -44,7 +45,7 @@ export function EcranTable({ data, agents, ordinateurs, documents }: Props) {
               filename="qrcodes-ecrans.zip"
               label="Télécharger tous les QR"
             />
-            <EcranCreateDialog agents={agents} ordinateurs={ordinateurs} disabled={!canWrite} />
+            <EcranCreateDialog agents={agents} disabled={!canWrite} />
           </div>
         }
       />
@@ -52,7 +53,6 @@ export function EcranTable({ data, agents, ordinateurs, documents }: Props) {
         <EcranEditDialog
           ecran={editingEcran}
           agents={agents}
-          ordinateurs={ordinateurs}
           documents={documents}
           open={true}
           onOpenChange={(open) => {

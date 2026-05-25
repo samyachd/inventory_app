@@ -69,11 +69,11 @@ export function OrdinateurEditDialog({
 
         {showDocStep ? (
           <DocumentForm
-            fixedOwner={{ ordinateur_id: ordinateur.id }}
+            fixedOwner={{ ordinateur_ids: [ordinateur.id] }}
             defaultValues={docDefaults}
             isPending={createDoc.isPending}
-            onSubmit={(data) => {
-              createDoc.mutate(data, { onSuccess: close });
+            onSubmit={(items) => {
+              createDoc.mutate(items[0], { onSuccess: close });
             }}
           />
         ) : (
@@ -97,9 +97,7 @@ export function OrdinateurEditDialog({
               ip_address: ordinateur.ip_address,
               mac_ethernet: ordinateur.mac_ethernet,
               mac_wifi: ordinateur.mac_wifi,
-              clef_wifi: ordinateur.clef_wifi,
               lecteur_cd: ordinateur.lecteur_cd,
-              casque: ordinateur.casque,
               absolute_dell: ordinateur.absolute_dell,
               watt: ordinateur.watt,
               agent_id: ordinateur.agent_id,

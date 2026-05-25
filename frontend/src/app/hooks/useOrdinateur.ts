@@ -8,6 +8,7 @@ export function useDeleteOrdinateur() {
     mutationFn: deleteOrdinateur,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }
@@ -18,6 +19,7 @@ export function useCreateOrdinateur() {
     mutationFn: createOrdinateur,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }
@@ -29,6 +31,7 @@ export function useUpdateOrdinateur() {
       updateOrdinateur(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }

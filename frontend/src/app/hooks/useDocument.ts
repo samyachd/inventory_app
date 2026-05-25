@@ -12,6 +12,7 @@ export function useCreateDocument() {
     mutationFn: createDocument,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }
@@ -23,6 +24,7 @@ export function useUpdateDocument() {
       updateDocument(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }
@@ -33,6 +35,7 @@ export function useDeleteDocument() {
     mutationFn: deleteDocument,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }

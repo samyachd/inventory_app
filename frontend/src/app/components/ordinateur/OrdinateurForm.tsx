@@ -10,10 +10,8 @@ import { OcrImportButton } from "../OcrImportButton";
 const SEL = "w-full border rounded-md px-3 py-2 text-sm bg-background";
 
 type BoolStr = "" | "true" | "false";
-type FormValues = Omit<OrdinateurCreatePayload, "clef_wifi" | "lecteur_cd" | "casque" | "absolute_dell"> & {
-  clef_wifi: BoolStr;
+type FormValues = Omit<OrdinateurCreatePayload, "lecteur_cd" | "absolute_dell"> & {
   lecteur_cd: BoolStr;
-  casque: BoolStr;
   absolute_dell: BoolStr;
 };
 
@@ -39,7 +37,7 @@ export function OrdinateurForm({
   submitLabel = "Créer l'ordinateur",
   onOcrExtracted,
 }: Props) {
-  const { register, handleSubmit, setValue } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
       tag: defaultValues?.tag ?? "",
       nom_reseau: defaultValues?.nom_reseau ?? "",
@@ -55,9 +53,7 @@ export function OrdinateurForm({
       ip_address: defaultValues?.ip_address ?? "",
       mac_ethernet: defaultValues?.mac_ethernet ?? "",
       mac_wifi: defaultValues?.mac_wifi ?? "",
-      clef_wifi: boolToStr(defaultValues?.clef_wifi),
       lecteur_cd: boolToStr(defaultValues?.lecteur_cd),
-      casque: boolToStr(defaultValues?.casque),
       absolute_dell: boolToStr(defaultValues?.absolute_dell),
       watt: defaultValues?.watt ?? null,
       agent_id: defaultValues?.agent_id ?? null,
@@ -67,7 +63,6 @@ export function OrdinateurForm({
   const submit = (values: FormValues) => {
     onSubmit({
       ...values,
-      tag: values.tag || null,
       nom_reseau: values.nom_reseau || null,
       marque: values.marque || null,
       type_equipement: values.type_equipement || null,
@@ -81,9 +76,7 @@ export function OrdinateurForm({
       ip_address: values.ip_address || null,
       mac_ethernet: values.mac_ethernet || null,
       mac_wifi: values.mac_wifi || null,
-      clef_wifi: strToBool(values.clef_wifi),
       lecteur_cd: strToBool(values.lecteur_cd),
-      casque: strToBool(values.casque),
       absolute_dell: strToBool(values.absolute_dell),
     });
   };
@@ -104,10 +97,11 @@ export function OrdinateurForm({
       )}
 
       <div className="overflow-y-auto max-h-[60vh] space-y-3 pr-1">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="tag">Tag</Label>
-            <Input id="tag" placeholder="SN1234" {...register("tag")} />
+            <Label htmlFor="tag">Tag *</Label>
+            <Input id="tag" placeholder="SN1234" {...register("tag", { required: "Le tag est obligatoire" })} />
+            {errors.tag && <p className="text-sm text-red-600 mt-1">{errors.tag.message}</p>}
           </div>
           <div>
             <Label htmlFor="nom_reseau">Nom réseau</Label>
@@ -115,7 +109,7 @@ export function OrdinateurForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="marque">Marque</Label>
             <Input id="marque" placeholder="Dell" {...register("marque")} />
@@ -130,7 +124,7 @@ export function OrdinateurForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="os">OS</Label>
             <Input id="os" placeholder="Windows 11 Pro" {...register("os")} />
@@ -141,7 +135,7 @@ export function OrdinateurForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="service">Service</Label>
             <Input id="service" placeholder="État Civil" {...register("service")} />
@@ -152,7 +146,7 @@ export function OrdinateurForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="ip_address">IP</Label>
             <Input id="ip_address" placeholder="192.168.1.1" {...register("ip_address")} />
@@ -171,7 +165,7 @@ export function OrdinateurForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="mac_ethernet">MAC Ethernet</Label>
             <Input id="mac_ethernet" placeholder="aa:bb:cc:dd:ee:ff" {...register("mac_ethernet")} />
@@ -182,26 +176,10 @@ export function OrdinateurForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
-          <div>
-            <Label htmlFor="clef_wifi">Clef WiFi</Label>
-            <select id="clef_wifi" className={SEL} {...register("clef_wifi")}>
-              <option value="">—</option>
-              <option value="true">Oui</option>
-              <option value="false">Non</option>
-            </select>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="lecteur_cd">Lecteur CD</Label>
             <select id="lecteur_cd" className={SEL} {...register("lecteur_cd")}>
-              <option value="">—</option>
-              <option value="true">Oui</option>
-              <option value="false">Non</option>
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="casque">Casque</Label>
-            <select id="casque" className={SEL} {...register("casque")}>
               <option value="">—</option>
               <option value="true">Oui</option>
               <option value="false">Non</option>
@@ -217,7 +195,7 @@ export function OrdinateurForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="fournisseur">Fournisseur</Label>
             <Input id="fournisseur" placeholder="Dell France" {...register("fournisseur")} />
@@ -239,7 +217,7 @@ export function OrdinateurForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="date_achat">Date achat</Label>
             <Input id="date_achat" type="date" {...register("date_achat")} />

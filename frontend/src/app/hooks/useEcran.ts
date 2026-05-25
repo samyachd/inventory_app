@@ -13,6 +13,7 @@ export function useDeleteEcran() {
     mutationFn: deleteEcran,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }
@@ -23,6 +24,7 @@ export function useCreateEcran() {
     mutationFn: createEcran,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }
@@ -34,6 +36,7 @@ export function useUpdateEcran() {
       updateEcran(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventaire"] });
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
     },
   });
 }

@@ -7,6 +7,8 @@ export interface AgentPayload {
   nom: string;
   email: string | null;
   telephone: string | null;
+  clef_wifi: boolean | null;
+  casque: boolean | null;
 }
 
 export async function deleteAgent(id: number): Promise<void> {
