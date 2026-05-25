@@ -64,8 +64,10 @@ def update_user(
             raise HTTPException(status_code=400, detail={"erreurs": erreurs})
         db_user.mot_de_passe_hash = hacher_mot_de_passe(data.pop("password"))
 
+    _ALLOWED = {"nom", "email", "role"}
     for key, value in data.items():
-        setattr(db_user, key, value)
+        if key in _ALLOWED:
+            setattr(db_user, key, value)
 
     changed = ", ".join(data.keys()) or "password"
     log_action(db, current_user.id, "modification", "utilisateurs", user_id, changed)
@@ -81,6 +83,8 @@ def delete_user(
     db: Session = Depends(get_db),
     current_user=Depends(require_role("admin")),
 ):
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Impossible de supprimer son propre compte")
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")

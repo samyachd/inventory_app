@@ -113,11 +113,14 @@ files_test/
 .env.*
 *.env
 
-# MAIS garde les templates
+# Keep only the example templates (never commit actual env files)
 !.env.example
 !.env.prod.example
-!.env.development
-!.env.production
+!.env.development.example
+!.env.production.example
+
+# Prometheus web auth config contains a bcrypt hash — keep out of git
+prometheus-web.yml
 
 # ============================================
 # ÉDITEURS & IDE

@@ -27,6 +27,7 @@ ALLOWED_TYPES: dict[str, str] = {
 }
 
 _IDENT = re.compile(r'^[a-z][a-z0-9_]*$')
+_SAFE_DEFAULT = re.compile(r"^(NULL|TRUE|FALSE|NOW\(\)|CURRENT_TIMESTAMP|CURRENT_DATE|\d+(\.\d+)?)$", re.IGNORECASE)
 
 _tables_cache: list[str] | None = None
 _tables_cache_at: float = 0.0
@@ -85,6 +86,13 @@ class AddColumnRequest(BaseModel):
     def validate_name(cls, v: str) -> str:
         if not _IDENT.match(v):
             raise ValueError("Nom invalide")
+        return v
+
+    @field_validator("default")
+    @classmethod
+    def validate_default(cls, v: str | None) -> str | None:
+        if v is not None and not _SAFE_DEFAULT.match(v):
+            raise ValueError("Valeur par défaut non autorisée. Valeurs acceptées : NULL, TRUE, FALSE, NOW(), CURRENT_TIMESTAMP, CURRENT_DATE, ou un nombre")
         return v
 
 

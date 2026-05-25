@@ -1,0 +1,13 @@
+# prometheus-web.yml — Prometheus HTTP basic-auth config.
+# Copy to prometheus-web.yml (gitignored) and replace the hash.
+#
+# Generate the bcrypt hash of your password:
+#   python3 -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt(12)).decode())"
+# or:
+#   htpasswd -nbB admin YOUR_PASSWORD | cut -d: -f2
+#
+# Put the same plain-text password as PROMETHEUS_ADMIN_PASSWORD in .env.prod
+# so Grafana can authenticate against Prometheus.
+
+basic_auth_users:
+  admin: $2b$12$CHANGE_ME_REPLACE_WITH_BCRYPT_HASH

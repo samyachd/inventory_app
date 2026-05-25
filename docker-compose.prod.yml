@@ -3,16 +3,17 @@
 #   docker compose --env-file .env.prod \
 #     -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
-# The --env-file flag is required so that ${LOKI_BASIC_AUTH} is resolved at
-# compose-parse time (the env_file: directive only injects vars *into* the
-# container, not into compose's own variable substitution).
+# The --env-file flag is required so that ${LOKI_BASIC_AUTH} and
+# ${PROMETHEUS_ADMIN_PASSWORD} are resolved at compose-parse time.
 #
 # Required on the host:
 #   /.env.prod                 — POSTGRES_*, GRAFANA_ADMIN_PASSWORD, VITE_API_URL,
-#                                LOKI_BASIC_AUTH
+#                                LOKI_BASIC_AUTH, PROMETHEUS_ADMIN_PASSWORD
 #   /backend/.env.prod         — SECRET_KEY, MISTRAL_API_KEY, CORS_ORIGINS, etc.
 #   /loki-proxy/htpasswd       — bcrypt entry for the Loki basic-auth user
 #                                (generate with: htpasswd -nbB user password)
+#   /prometheus-web.yml        — bcrypt entry for the Prometheus basic-auth user
+#                                (copy from prometheus-web.yml.example and fill in hash)
 #
 # Backups: managed natively on the DB server. See deploy/DB_SERVER.md.
 
@@ -27,6 +28,11 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 64M
 
   backend:
     image: ghcr.io/samyachd/mairie/backend:latest
@@ -43,6 +49,11 @@ services:
       retries: 5
       start_period: 30s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
 
   # Backups are managed natively on the DB server via cron + pg_dump.
   # See deploy/DB_SERVER.md § Backup script.
@@ -50,20 +61,43 @@ services:
   prometheus:
     volumes:
       - ./prometheus.prod.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus-web.yml:/etc/prometheus/web.yml:ro
       - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.config.file=/etc/prometheus/web.yml
+      - --storage.tsdb.path=/prometheus
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   grafana:
     env_file:
       - .env.prod
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      PROMETHEUS_ADMIN_PASSWORD: ${PROMETHEUS_ADMIN_PASSWORD}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
   loki:
     volumes:
       - loki_data:/loki
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
   # ─────────────────────────────────────────────────────────────────
   # Basic-auth in front of Loki. Promtail and Grafana point at this
@@ -78,6 +112,11 @@ services:
     depends_on:
       - loki
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
 
   promtail:
     volumes:
@@ -90,6 +129,11 @@ services:
     depends_on:
       - loki-proxy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
 
 volumes:
   prometheus_data:
