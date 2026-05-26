@@ -1,13 +1,13 @@
 # 📦 Mairie - Système d'Inventaire
 
-Système de gestion d'inventaire pour les équipements informatiques (ordinateurs, écrans, licenses) d'une mairie.
+Système de gestion d'inventaire pour les équipements informatiques (ordinateurs, écrans, licences) d'une mairie.
 
 ## 🎯 Fonctionnalités
 
-- **Gestion des Utilisateurs** : Création, lecture, mise à jour, suppression d'utilisateurs
+- **Gestion des Agents** : Suivi du personnel de la mairie et de leur matériel
 - **Gestion des Ordinateurs** : Suivi complet des PC avec propriétaires, configurations, garanties
 - **Gestion des Écrans** : Inventaire des moniteurs avec références aux ordinateurs
-- **Gestion des Licenses** : Suivi des licenses Office avec associations aux PC
+- **Gestion des Licences** : Suivi des licences Office avec associations aux PC
 - **API RESTful** : FastAPI avec documentation automatique (Swagger)
 - **Base de Données** : PostgreSQL avec SQLAlchemy ORM et migrations Alembic
 - **Tests** : Suite de tests unitaires et d'intégration avec pytest
@@ -15,18 +15,18 @@ Système de gestion d'inventaire pour les équipements informatiques (ordinateur
 ## 🛠️ Stack Technique
 
 - **Backend** : FastAPI 0.128+
-- **Base de Données** : PostgreSQL + SQLAlchemy 2.0
+- **Base de Données** : PostgreSQL 15 + SQLAlchemy 2.0
 - **Migrations** : Alembic 1.17+
 - **Validation** : Pydantic 2.12+
 - **Tests** : pytest 9.0+
 - **Linting** : ruff 0.14+
 - **Typing** : mypy 1.19+
-- **Frontend** : React 19.2 (en développement)
+- **Frontend** : React 19 (Vite)
 
 ## 📋 Prérequis
 
 - Python 3.12+
-- PostgreSQL 12+
+- PostgreSQL 15+
 - pip ou uv (gestionnaire de paquets)
 
 ## ⚙️ Installation
@@ -72,7 +72,7 @@ alembic upgrade head
 
 ### Lancer le serveur
 ```bash
-uvicorn backend.app.main:app --reload
+uvicorn backend.main:app --reload
 ```
 
 L'API sera disponible sur `http://localhost:8000`
@@ -86,30 +86,24 @@ L'API sera disponible sur `http://localhost:8000`
 ```
 mairie/
 ├── backend/
-│   └── app/
-│       ├── main.py              # Application FastAPI
-│       ├── api/
-│       │   └── routes/          # Routes API (users, ordinateurs, etc)
-│       ├── db/
-│       │   ├── models.py        # Modèles SQLAlchemy
-│       │   ├── session.py       # Configuration DB
-│       │   └── db.py            # Base class
-│       ├── core/
-│       │   ├── settings.py      # Configuration
-│       │   ├── security.py      # Authentification/Sécurité
-│       │   └── constants.py     # Constantes globales
-│       └── schemas/             # Schémas Pydantic
-├── tests/
-│   ├── conftest.py             # Fixtures pytest
-│   ├── unit/
-│   │   ├── api/                # Tests des routes
-│   │   └── db/                 # Tests des modèles
-│   └── integration/            # Tests d'intégration
-├── alembic/                     # Migrations DB
-├── frontend/                    # Application React
+│   ├── main.py                  # Application FastAPI
+│   ├── api/
+│   │   └── routes/              # Routes API (agents, ordinateurs, etc)
+│   ├── db/
+│   │   ├── models/              # Modèles SQLAlchemy
+│   │   └── session.py           # Configuration DB
+│   ├── core/
+│   │   ├── settings.py          # Configuration
+│   │   ├── security.py          # Authentification/Sécurité
+│   │   └── dependencies.py      # Dépendances FastAPI (rôles, JWT)
+│   ├── schemas/                 # Schémas Pydantic
+│   ├── services/                # Logique métier (OCR, QR code)
+│   ├── alembic/                 # Migrations DB
+│   └── tests/                   # Suite de tests pytest
+├── frontend/                    # Application React (Vite)
 ├── notebooks/                   # Jupyter notebooks (RAG/CAG)
-├── pyproject.toml              # Dépendances Python
-└── .env.example                # Variables d'env exemple
+├── pyproject.toml               # Dépendances Python
+└── .env.example                 # Variables d'env exemple
 ```
 
 ## 🧪 Tests
@@ -137,88 +131,89 @@ pytest tests/integration/ -v
 
 ## 📝 Endpoints API
 
-### Users
-- `POST /users/` - Créer un utilisateur
-- `GET /users/` - Lister les utilisateurs (pagination)
-- `GET /users/{id}` - Détails d'un utilisateur
-- `PUT /users/{id}` - Mettre à jour un utilisateur
-- `DELETE /users/{id}` - Supprimer un utilisateur
+### Inventaire (lecture)
+- `GET /inventaire/` - Retourne l'ensemble de l'inventaire (agents, ordinateurs, écrans, licences, documents)
+
+### Agents
+- `POST /agents/` - Créer un agent
+- `PUT /agents/{id}` - Mettre à jour un agent
+- `DELETE /agents/{id}` - Supprimer un agent
 
 ### Ordinateurs
-- `POST /ordinateurs/` - Créer un PC
-- `GET /ordinateurs/` - Lister les PC
-- `GET /ordinateurs/{id}` - Détails d'un PC
-- `PUT /ordinateurs/{id}` - Mettre à jour un PC
-- `DELETE /ordinateurs/{id}` - Supprimer un PC
+- `POST /ordinateurs/` - Créer un ordinateur
+- `PUT /ordinateurs/{id}` - Mettre à jour un ordinateur
+- `DELETE /ordinateurs/{id}` - Supprimer un ordinateur
 
 ### Écrans
 - `POST /ecrans/` - Créer un écran
-- `GET /ecrans/` - Lister les écrans
-- `GET /ecrans/{id}` - Détails d'un écran
 - `PUT /ecrans/{id}` - Mettre à jour un écran
 - `DELETE /ecrans/{id}` - Supprimer un écran
 
-### Licenses
-- `POST /licenses/` - Créer une license
-- `GET /licenses/` - Lister les licenses
-- `GET /licenses/{id}` - Détails d'une license
-- `PUT /licenses/{id}` - Mettre à jour une license
-- `DELETE /licenses/{id}` - Supprimer une license
+### Licences
+- `POST /licenses/` - Créer une licence
+- `PUT /licenses/{id}` - Mettre à jour une licence
+- `DELETE /licenses/{id}` - Supprimer une licence
+
+### Authentification
+- `POST /auth/login` - Obtenir un token JWT
+- `POST /auth/logout` - Révoquer le token
+
+### Autres
+- `GET /users/` · `POST /users/` · … - Gestion des comptes utilisateurs (app)
+- `GET /qrcode/{tag}` - Générer un QR code
+- `POST /models/ocr` - Extraction OCR via Mistral
 
 ## 🔐 Sécurité
 
-### Configurations actuelles
-- CORS configuré pour localhost et domaines approuvés
+### Fonctionnalités de sécurité
+- Authentification JWT (HS256) avec expiration configurable
+- Système de rôles : `admin` > `user` > `read`
+- Blacklist de tokens révoqués
+- CORS configuré pour les origines autorisées
 - Validation des entrées avec Pydantic
-- Gestion des erreurs HTTP cohérente
-- Logging des opérations sensibles
-
-### À implémenter
-- [ ] Authentification JWT/OAuth2
-- [ ] Système de rôles et permissions
-- [ ] Rate limiting
-- [ ] Audit trail des modifications
-- [ ] Soft delete
+- Audit trail des modifications (`action_log`)
 
 ## 📊 Modèles de Données
 
-### User
+### Agent
 ```python
 - id: int (PK)
-- name: str
-- email: str (unique)
+- nom: str
+- email: str (unique, optionnel)
+- telephone: str (optionnel)
+- clef_wifi: bool (optionnel)
+- casque: bool (optionnel)
 - created_at: datetime
+- updated_at: datetime
 ```
 
-### Ordinateurs
+### Ordinateur
 ```python
 - id: int (PK)
-- type_pc: str
+- tag: str (unique)
 - marque: str
-- proprietaire: str
-- service: str
-- batiment: str
+- modele: str
+- type_pc: str
 - ram: str
 - os: str
-- tag: str (unique)
 - nom_reseau: str (unique)
 - ip_address: str (unique)
-- user_id: int (FK)
-- office_license_id: int (FK)
+- agent_id: int (FK → Agent, optionnel)
+- office_license_id: int (FK → OfficeLicence, optionnel)
 ```
 
-### Écrans
+### Ecran
 ```python
 - id: int (PK)
 - tag: str (unique)
 - taille: str
 - marque: str
 - modele: str
-- ordinateur_id: int (FK)
+- ordinateur_id: int (FK → Ordinateur, optionnel)
 - slot: int (1-5)
 ```
 
-### OfficeLicenses
+### OfficeLicence
 ```python
 - id: int (PK)
 - version: str
@@ -283,10 +278,10 @@ pytest -v
 ## 📖 Développement
 
 ### Ajouter une nouvelle route
-1. Créer le fichier dans `backend/app/api/routes/`
-2. Définir le Pydantic schema dans `backend/app/schemas/`
-3. Importer et inclure le router dans `main.py`
-4. Ajouter les tests dans `tests/unit/api/`
+1. Créer le fichier dans `backend/api/routes/`
+2. Définir le Pydantic schema dans `backend/schemas/`
+3. Importer et inclure le router dans `backend/main.py`
+4. Ajouter les tests dans `backend/tests/`
 
 ### Code standards
 - Utiliser logging pour les opérations
@@ -328,5 +323,5 @@ Les contributions sont bienvenues ! Veuillez :
 
 ---
 
-**Version** : 0.1.0  
-**Dernier update** : Janvier 2026
+**Version** : 0.2.0  
+**Dernier update** : Mai 2026
