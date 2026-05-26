@@ -12,8 +12,8 @@ app server (Apache + Docker); this one covers the DB server only.
 ```
   App server (Ubuntu 24.04)          DB server (Ubuntu 24.04)
   ────────────────────────           ────────────────────────
-  Apache (TLS termination)           PostgreSQL 15 (native, systemd)
-  Docker: frontend, backend    ────► port 5432
+  Apache (TLS termination)           PostgreSQL 16 (native, systemd)
+  Docker: frontend, backend    ────► port 5433
   Docker: prometheus, grafana,       cron: nightly pg_dump → NAS
           loki, promtail
 ```
@@ -47,8 +47,8 @@ sudo -u postgres psql
 ```
 
 ```sql
-CREATE USER mairie WITH PASSWORD 'your-strong-password';
-CREATE DATABASE mairie OWNER mairie;
+CREATE USER admin WITH PASSWORD 'your-strong-password';
+CREATE DATABASE inventaire OWNER admin;
 -- Confirm:
 \l
 \du
@@ -70,7 +70,7 @@ PostgreSQL listens only on `localhost` by default. Two files to edit:
 ### `postgresql.conf`
 
 ```bash
-sudo nano /etc/postgresql/15/main/postgresql.conf
+sudo nano /etc/postgresql/16/main/postgresql.conf
 ```
 
 Find and change:
@@ -86,12 +86,12 @@ listen_addresses = '127.0.0.1,<app-server-ip>'
 ### `pg_hba.conf`
 
 ```bash
-sudo nano /etc/postgresql/15/main/pg_hba.conf
+sudo nano /etc/postgresql/16/main/pg_hba.conf
 ```
 
 Add this line at the end (replace `<app-server-ip>` with the actual IP):
 ```
-host  mairie  mairie  <app-server-ip>/32  scram-sha-256
+host  inventaire  admin  <app-server-ip>/32  scram-sha-256
 ```
 
 ### Apply changes
@@ -104,49 +104,69 @@ sudo systemctl reload postgresql
 
 ```bash
 # Run this on the APP server, not the DB server
-psql -h <db-server-ip> -U mairie -d mairie -c 'SELECT version();'
+psql -h <db-server-ip> -U admin -d inventaire -c 'SELECT version();'
 ```
 
 ---
 
 ## 4. Firewall
 
-Allow only the app server to reach port 5432:
+Allow only the app server to reach port 5433:
 
 ```bash
 # On the DB server
-sudo ufw allow from <app-server-ip> to any port 5432
+sudo ufw allow from <app-server-ip> to any port 5433
 sudo ufw enable
 sudo ufw status
 ```
 
 ---
 
-## 5. Mount the NAS (backup target)
+## 5. Set up SSH backup to the app server
 
-The NAS mount goes on the **DB server** (not the app server) since that is
-where `pg_dump` runs.
+Dumps are written locally on the DB server, then `rsync`ed to the app server
+over SSH. No NAS or extra hardware needed.
+
+### On the app server
 
 ```bash
-sudo apt-get install -y cifs-utils
+# Create a dedicated backup user and target directory
+sudo useradd -r -m -s /bin/bash backup
+sudo mkdir -p /var/backups/inventaire/{last,daily,weekly,monthly}
+sudo chown -R backup:backup /var/backups/inventaire
 
-sudo mkdir -p /mnt/mairie-backups
+# Prepare the authorized_keys file (the DB server's key goes here in the next step)
+sudo mkdir -p /home/backup/.ssh
+sudo chmod 700 /home/backup/.ssh
+sudo touch /home/backup/.ssh/authorized_keys
+sudo chmod 600 /home/backup/.ssh/authorized_keys
+sudo chown -R backup:backup /home/backup/.ssh
+```
 
-# NAS credentials file (root-only)
-sudo bash -c 'cat > /etc/cifs-mairie <<EOF
-username=<nas-user>
-password=<nas-password>
-domain=<windows-domain-or-empty>
-EOF'
-sudo chmod 600 /etc/cifs-mairie
+### On the DB server
 
-# Add to /etc/fstab
-sudo bash -c 'cat >> /etc/fstab <<EOF
-//nas.mairie.local/sauvegardes/mairie /mnt/mairie-backups cifs credentials=/etc/cifs-mairie,vers=3.0,uid=0,gid=0  0  0
-EOF'
+```bash
+# Generate an SSH key for the postgres system user
+sudo -u postgres ssh-keygen -t ed25519 -f /var/lib/postgresql/.ssh/id_ed25519 -N ""
 
-sudo mount -a
-ls /mnt/mairie-backups   # should not error
+# Print the public key — copy this output
+sudo cat /var/lib/postgresql/.ssh/id_ed25519.pub
+```
+
+### Back on the app server
+
+Paste the public key into the backup user's `authorized_keys`:
+
+```bash
+echo "<paste-public-key-here>" | sudo tee -a /home/backup/.ssh/authorized_keys
+```
+
+### Test the connection from the DB server
+
+```bash
+sudo -u postgres ssh backup@<app-server-ip> "echo OK"
+# Should print: OK
+# Accept the host fingerprint when prompted (first time only)
 ```
 
 ---
@@ -163,9 +183,12 @@ sudo nano /usr/local/bin/mairie-backup.sh
 #!/bin/bash
 set -euo pipefail
 
-DB_USER="mairie"
-DB_NAME="mairie"
-BACKUP_DIR="/mnt/mairie-backups"
+DB_USER="admin"
+DB_NAME="inventaire"
+BACKUP_DIR="/var/backups/inventaire"   # local on the DB server
+REMOTE_USER="backup"
+REMOTE_HOST="<app-server-ip>"          # replace with actual app server IP
+REMOTE_DIR="/var/backups/inventaire"
 DATE=$(date +%Y-%m-%dT%H:%M:%S)
 DUMP="$BACKUP_DIR/last/${DB_NAME}-latest.sql.gz"
 
@@ -193,6 +216,12 @@ if [[ $(date +%d) == 01 ]]; then
     ls -t "$BACKUP_DIR/monthly/" | tail -n +13 | xargs -r -I{} rm "$BACKUP_DIR/monthly/{}"
 fi
 
+# Sync to app server (mirrors local structure, deletes orphaned files on remote)
+rsync -az --delete \
+    -e "ssh -i /var/lib/postgresql/.ssh/id_ed25519" \
+    "$BACKUP_DIR/" \
+    "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/"
+
 echo "$(date '+%Y-%m-%d %H:%M:%S') backup OK — $(du -sh "$DUMP" | cut -f1)"
 ```
 
@@ -203,7 +232,7 @@ sudo chmod +x /usr/local/bin/mairie-backup.sh
 Allow the `postgres` system user to run `pg_dump` without a password prompt:
 
 ```bash
-sudo bash -c 'echo "localhost:5432:mairie:mairie:your-strong-password" \
+sudo bash -c 'echo "localhost:5433:inventaire:admin:your-strong-password" \
     > /var/lib/postgresql/.pgpass'
 sudo chmod 600 /var/lib/postgresql/.pgpass
 sudo chown postgres:postgres /var/lib/postgresql/.pgpass
@@ -212,7 +241,7 @@ sudo chown postgres:postgres /var/lib/postgresql/.pgpass
 Test it manually:
 ```bash
 sudo -u postgres /usr/local/bin/mairie-backup.sh
-ls -lh /mnt/mairie-backups/last/
+ls -lh /var/backups/inventaire/last/
 ```
 
 ---
@@ -269,10 +298,10 @@ sudo systemctl status postgresql
 ### Connect to the database
 
 ```bash
-sudo -u postgres psql -d mairie
+sudo -u postgres psql -d inventaire
 
 # Or from the app server (requires psql installed there):
-psql -h <db-server-ip> -U mairie -d mairie
+psql -h <db-server-ip> -U admin -d inventaire
 ```
 
 ### Useful queries
@@ -285,12 +314,12 @@ SELECT
   (SELECT count(*) FROM document)   AS docs;
 
 -- Database size
-SELECT pg_size_pretty(pg_database_size('mairie'));
+SELECT pg_size_pretty(pg_database_size('inventaire'));
 
 -- Active connections
 SELECT pid, usename, application_name, client_addr, state
 FROM pg_stat_activity
-WHERE datname = 'mairie';
+WHERE datname = 'inventaire';
 
 -- Kill a stuck connection
 SELECT pg_terminate_backend(<pid>);
@@ -302,7 +331,7 @@ SELECT pg_terminate_backend(<pid>);
 tail -50 /var/log/mairie-backup.log
 
 # List all available dumps
-find /mnt/mairie-backups -name '*.sql.gz' | sort
+find /var/backups/inventaire -name '*.sql.gz' | sort
 ```
 
 ### Force an immediate backup
@@ -323,7 +352,7 @@ sudo -u postgres /usr/local/bin/mairie-restore.sh
 
 # Specific point in time
 sudo -u postgres /usr/local/bin/mairie-restore.sh \
-    /mnt/mairie-backups/daily/mairie-2026-05-10T00:00:00.sql.gz
+    /var/backups/inventaire/daily/inventaire-2026-05-10T00:00:00.sql.gz
 ```
 
 ### Create the restore script
@@ -336,9 +365,9 @@ sudo nano /usr/local/bin/mairie-restore.sh
 #!/bin/bash
 set -euo pipefail
 
-DB_USER="mairie"
-DB_NAME="mairie"
-BACKUP_DIR="/mnt/mairie-backups"
+DB_USER="admin"
+DB_NAME="inventaire"
+BACKUP_DIR="/var/backups/inventaire"
 DUMP="${1:-$BACKUP_DIR/last/${DB_NAME}-latest.sql.gz}"
 
 if [[ ! -f "$DUMP" ]]; then
@@ -409,24 +438,24 @@ A backup you've never restored is Schrödinger's backup.
 
 ```bash
 # On the DB server — restore into a separate test database
-sudo -u postgres psql -c "CREATE DATABASE mairie_test OWNER mairie;"
-gunzip -c /mnt/mairie-backups/last/mairie-latest.sql.gz \
-    | sudo -u postgres psql -d mairie_test
+sudo -u postgres psql -c "CREATE DATABASE inventaire_test OWNER admin;"
+gunzip -c /var/backups/inventaire/last/inventaire-latest.sql.gz \
+    | sudo -u postgres psql -d inventaire_test
 
 # Smoke check
-sudo -u postgres psql -d mairie_test -c \
+sudo -u postgres psql -d inventaire_test -c \
   "SELECT (SELECT count(*) FROM ordinateur) AS ordis,
           (SELECT count(*) FROM ecran)      AS ecrans,
           (SELECT count(*) FROM document)   AS docs;"
 
 # Compare with prod counts
-sudo -u postgres psql -d mairie -c \
+sudo -u postgres psql -d inventaire -c \
   "SELECT (SELECT count(*) FROM ordinateur) AS ordis,
           (SELECT count(*) FROM ecran)      AS ecrans,
           (SELECT count(*) FROM document)   AS docs;"
 
 # Drop the test database when done
-sudo -u postgres psql -c "DROP DATABASE mairie_test;"
+sudo -u postgres psql -c "DROP DATABASE inventaire_test;"
 ```
 
 ---
@@ -435,8 +464,8 @@ sudo -u postgres psql -c "DROP DATABASE mairie_test;"
 
 | What | When | How |
 |---|---|---|
-| Rotate `POSTGRES_PASSWORD` | Yearly | `ALTER USER mairie WITH PASSWORD '...';` then update `.env.prod` on the app server and restart the backend. |
-| Review `pg_hba.conf` | After any infra change | Make sure only the app server IP is listed. `sudo cat /etc/postgresql/15/main/pg_hba.conf` |
+| Rotate `POSTGRES_PASSWORD` | Yearly | `ALTER USER admin WITH PASSWORD '...';` then update `.env.prod` on the app server and restart the backend. |
+| Review `pg_hba.conf` | After any infra change | Make sure only the app server IP is listed. `sudo cat /etc/postgresql/16/main/pg_hba.conf` |
 | TLS for the Postgres connection | If the servers are not on a private LAN | Set `ssl = on` in `postgresql.conf` and use `sslmode=require` in `DATABASE_URL`. |
 | Test restore | Monthly | See section above. |
 | Update PostgreSQL minor version | Monthly | `sudo apt-get update && sudo apt-get upgrade postgresql` |
@@ -449,16 +478,16 @@ sudo -u postgres psql -c "DROP DATABASE mairie_test;"
 
 ```bash
 # From the app server — check network reachability
-nc -zv <db-server-ip> 5432
+nc -zv <db-server-ip> 5433
 
 # Check pg_hba.conf has the app server's IP
-sudo grep -n mairie /etc/postgresql/15/main/pg_hba.conf
+sudo grep -n inventaire /etc/postgresql/16/main/pg_hba.conf
 
 # Check PostgreSQL is listening on the right address
-sudo ss -tlnp | grep 5432
+sudo ss -tlnp | grep 5433
 
 # Check the PostgreSQL log
-sudo tail -50 /var/log/postgresql/postgresql-15-main.log
+sudo tail -50 /var/log/postgresql/postgresql-16-main.log
 ```
 
 ### Backup cron did not run
@@ -470,9 +499,11 @@ sudo systemctl status cron
 # Check the log
 tail -100 /var/log/mairie-backup.log
 
-# Check the NAS is mounted
-mountpoint /mnt/mairie-backups
-ls /mnt/mairie-backups
+# Check local backup dir has files
+ls -lh /var/backups/inventaire/last/
+
+# Test SSH connection to the app server
+sudo -u postgres ssh -i /var/lib/postgresql/.ssh/id_ed25519 backup@<app-server-ip> "ls /var/backups/inventaire/last/"
 
 # Run manually to see the error
 sudo -u postgres /usr/local/bin/mairie-backup.sh

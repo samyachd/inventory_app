@@ -15,7 +15,7 @@ Système de gestion d'inventaire pour les équipements informatiques (ordinateur
 ## 🛠️ Stack Technique
 
 - **Backend** : FastAPI 0.128+
-- **Base de Données** : PostgreSQL 15 + SQLAlchemy 2.0
+- **Base de Données** : PostgreSQL 16 + SQLAlchemy 2.0
 - **Migrations** : Alembic 1.17+
 - **Validation** : Pydantic 2.12+
 - **Tests** : pytest 9.0+
@@ -26,7 +26,7 @@ Système de gestion d'inventaire pour les équipements informatiques (ordinateur
 ## 📋 Prérequis
 
 - Python 3.12+
-- PostgreSQL 15+
+- PostgreSQL 16
 - pip ou uv (gestionnaire de paquets)
 
 ## ⚙️ Installation

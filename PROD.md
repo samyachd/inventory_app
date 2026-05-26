@@ -9,21 +9,26 @@ For the dedicated database server setup see [deploy/DB_SERVER.md](deploy/DB_SERV
 ## Architecture
 
 ```
-                ┌─────────────────────────────────────────────────────┐
-   public       │  Apache (host)        — TLS termination, port 443  │
-  HTTPS ───────►│   ↓ proxies / → 127.0.0.1:80                       │
-                ├─────────────────────────────────────────────────────┤
-                │  frontend (container)  — nginx, serves the SPA     │
-                │   ↓ proxies /api/* → backend:8000                   │
-                ├─────────────────────────────────────────────────────┤
-                │  backend (container)   — FastAPI, 4 uvicorn workers│
-                │   ↓                                                 │
-                │  db (container)        — Postgres 15               │
-                │   ↑ nightly dumps                                   │
-                │  db-backup (container) — writes to /backups (NAS)  │
-                └─────────────────────────────────────────────────────┘
+  App server
+  ┌─────────────────────────────────────────────────────┐
+  │  Apache (host)        — TLS termination, port 443  │◄── public HTTPS
+  │   ↓ proxies / → 127.0.0.1:80                       │
+  ├─────────────────────────────────────────────────────┤
+  │  frontend (container)  — nginx, serves the SPA     │
+  │   ↓ proxies /api/* → backend:8000                   │
+  ├─────────────────────────────────────────────────────┤
+  │  backend (container)   — FastAPI, 4 uvicorn workers│
+  │   ↓ TCP 5433                                        │
+  └─────────────────────────────────────────────────────┘
+            │
+            ▼
+  DB server
+  ┌─────────────────────────────────────────────────────┐
+  │  PostgreSQL 16 (native, systemd)  — port 5433      │
+  │   ↑ nightly cron: pg_dump → NAS                    │
+  └─────────────────────────────────────────────────────┘
 
-  Observability (internal-only):
+  Observability (app server, internal-only):
     prometheus → scrapes backend:8000/metrics
     promtail   → scrapes Docker logs → loki-proxy (basic auth) → loki
     grafana    → reads loki + prometheus
@@ -36,8 +41,9 @@ basic auth.
 
 ---
 
-## Prerequisites on the host
+## Prerequisites
 
+### App server
 - Debian/Ubuntu 22.04+
 - Docker 24+ and `docker compose` v2
 - Apache 2.4 with `mod_ssl`, `mod_proxy`, `mod_proxy_http`, `mod_headers`,
@@ -45,68 +51,80 @@ basic auth.
 - `apache2-utils` (for `htpasswd`)
 - `certbot` + `python3-certbot-apache`
 - A domain pointing to the host (A/AAAA record)
-- An SMB or NFS mount for backups (the mairie's NAS) at a known path
 - A personal access token with `read:packages` scope on GHCR if the images
   are private (skip if public)
 
+### DB server
+- Debian/Ubuntu 22.04+
+- PostgreSQL 16 (native, managed by systemd)
+- See [deploy/DB_SERVER.md](deploy/DB_SERVER.md) for full setup
+
 ---
 
-## File layout on the host
+## File layout
+
+### App server
 
 ```
 /home/<user>/mairie/                    ← git checkout
 ├── .env.prod                           ← gitignored, see .env.prod.example
 ├── backend/.env.prod                   ← gitignored, see backend/.env.prod.example
 ├── loki-proxy/htpasswd                 ← gitignored, generated with htpasswd
+├── prometheus-web.yml                  ← gitignored, copy from .example
 ├── docker-compose.yml
 ├── docker-compose.prod.yml
 └── deploy/
     ├── apache/mairie.conf              ← copy to /etc/apache2/sites-available/
-    ├── restore.sh                      ← Postgres restore helper
-    └── RESTORE.md
-/mnt/mairie-backups/                    ← NAS mount
-└── (daily/, weekly/, monthly/, last/ created by db-backup)
+    └── DB_SERVER.md                    ← DB server runbook
 /etc/apache2/sites-available/mairie.conf ← copied from the repo
 /etc/letsencrypt/live/<domain>/         ← TLS certs from certbot
+```
+
+### DB server
+
+```
+/var/backups/inventaire/                ← local dumps (rsync'd to app server)
+└── daily/, weekly/, monthly/, last/
+/usr/local/bin/mairie-backup.sh         ← backup script (see DB_SERVER.md)
+/usr/local/bin/mairie-restore.sh        ← restore script (see DB_SERVER.md)
+/var/lib/postgresql/.pgpass             ← pg_dump credentials
+/var/lib/postgresql/.ssh/id_ed25519     ← SSH key for rsync to app server
 ```
 
 ---
 
 ## First-time deployment
 
+**Before starting:** complete the DB server setup first — see [deploy/DB_SERVER.md](deploy/DB_SERVER.md). You need the DB server IP and Postgres password before configuring the app server.
+
 ```bash
-# 1. Clone and prepare
+# 1. Clone and prepare (on the app server)
 git clone https://github.com/samyachd/mairie.git
 cd mairie
 
 # 2. Configure env (gitignored, host-specific)
 cp .env.prod.example .env.prod
 cp backend/.env.prod.example backend/.env.prod
-# Edit both. Generate strong values:
-#   POSTGRES_PASSWORD: openssl rand -base64 24
+# Edit both. Key values:
+#   POSTGRES_HOST=<db-server-ip>       ← IP of the DB server
+#   POSTGRES_PASSWORD=<same as DB server>
 #   GRAFANA_ADMIN_PASSWORD: openssl rand -base64 16
 #   SECRET_KEY: openssl rand -hex 32
 #   MISTRAL_API_KEY: from https://console.mistral.ai/
-#   LOKI_BASIC_AUTH=mairie:<password>   (matches step 4 below)
+#   LOKI_BASIC_AUTH=mairie:<password>   (matches step 3 below)
+#   PROMETHEUS_ADMIN_PASSWORD: openssl rand -base64 16
 
-# 3. Mount the NAS at the path declared in BACKUP_TARGET
-sudo mkdir -p /mnt/mairie-backups
-sudo bash -c 'cat >> /etc/fstab <<EOF
-//nas.mairie.local/sauvegardes/mairie /mnt/mairie-backups cifs credentials=/etc/cifs-mairie,vers=3.0,uid=0,gid=0  0  0
-EOF'
-sudo bash -c 'cat > /etc/cifs-mairie <<EOF
-username=<nas-user>
-password=<nas-password>
-domain=<windows-domain-or-empty>
-EOF'
-sudo chmod 600 /etc/cifs-mairie
-sudo mount -a
-ls /mnt/mairie-backups   # should not error
-
-# 4. Loki basic-auth credentials
+# 3. Loki basic-auth credentials
 sudo apt-get install -y apache2-utils
 htpasswd -nbB mairie '<password-from-LOKI_BASIC_AUTH>' > loki-proxy/htpasswd
 chmod 600 loki-proxy/htpasswd
+
+# 4. Prometheus basic-auth (web.yml with bcrypt hash)
+cp prometheus-web.yml.example prometheus-web.yml
+# Generate hash and paste it into prometheus-web.yml:
+#   python3 -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt(12)).decode())"
+# Use the same plain-text password as PROMETHEUS_ADMIN_PASSWORD in .env.prod
+chmod 600 prometheus-web.yml
 
 # 5. Authenticate to GHCR (skip if images are public)
 echo "$GHCR_TOKEN" | docker login ghcr.io -u samyachd --password-stdin
@@ -145,18 +163,29 @@ the UI.
 
 ## Configuration files
 
+### App server files
+
 | File | Owner | Tracked | Purpose |
 |---|---|---|---|
-| `/.env.prod` | host | gitignored | `POSTGRES_*`, `GRAFANA_ADMIN_PASSWORD`, `VITE_API_URL`, `BACKUP_TARGET`, `LOKI_BASIC_AUTH` |
+| `/.env.prod` | host | gitignored | `POSTGRES_HOST`, `POSTGRES_*`, `GRAFANA_ADMIN_PASSWORD`, `VITE_API_URL`, `LOKI_BASIC_AUTH`, `PROMETHEUS_ADMIN_PASSWORD` |
 | `/backend/.env.prod` | host | gitignored | `SECRET_KEY`, `MISTRAL_API_KEY`, `CORS_ORIGINS`, `DEBUG=false`, `MISTRAL_MODEL` |
 | `/loki-proxy/htpasswd` | host | gitignored | bcrypt entry for the Loki basic-auth user |
-| `/etc/cifs-mairie` | host | n/a | NAS credentials, root-only |
+| `/prometheus-web.yml` | host | gitignored | bcrypt entry for the Prometheus basic-auth user |
 | `/etc/apache2/sites-available/mairie.conf` | host | template tracked at `deploy/apache/mairie.conf` | TLS termination + reverse proxy |
 | `/etc/letsencrypt/live/<domain>/*` | host | n/a | TLS cert (managed by certbot) |
 | `prometheus.prod.yml`, `promtail.prod.yml` | repo | tracked | observability config |
 
+### DB server files
+
+| File | Purpose |
+|---|---|
+| `/var/lib/postgresql/.pgpass` | pg_dump credentials |
+| `/var/lib/postgresql/.ssh/id_ed25519` | SSH key for rsync to app server |
+| `/usr/local/bin/mairie-backup.sh` | nightly backup script |
+| `/usr/local/bin/mairie-restore.sh` | restore script |
+
 `docker compose` invocations always need `--env-file .env.prod` so that
-`${BACKUP_TARGET}` and `${LOKI_BASIC_AUTH}` interpolate at parse time.
+`${LOKI_BASIC_AUTH}` and `${PROMETHEUS_ADMIN_PASSWORD}` interpolate at parse time.
 The `env_file:` directive inside compose only injects vars *into the
 container*, not into compose's own variable substitution.
 
@@ -184,8 +213,8 @@ docker compose --env-file .env.prod \
 ```
 
 `up -d` on already-running services is a no-op for unchanged ones; only
-the pulled images get recreated. Healthchecks gate the order so backend
-waits for db, frontend waits for backend.
+the pulled images get recreated. Healthchecks gate startup order so
+frontend waits for backend. The DB is external so no compose dependency.
 
 ### Tail logs
 
@@ -217,25 +246,28 @@ $COMPOSE exec backend alembic downgrade -1
 ### Hand-roll a one-off Postgres query
 
 ```bash
-$COMPOSE exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-# or one-shot:
-$COMPOSE exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-  -c 'SELECT count(*) FROM ordinateur;'
+# From the DB server:
+sudo -u postgres psql -d mairie
+
+# From the app server (requires psql installed):
+psql -h <db-server-ip> -U mairie -d mairie -c 'SELECT count(*) FROM ordinateur;'
 ```
 
 ### Force an immediate backup
 
 ```bash
-$COMPOSE exec db-backup /backup.sh
-$COMPOSE exec db-backup ls -lh /backups/last/
+# On the DB server:
+sudo -u postgres /usr/local/bin/mairie-backup.sh
+ls -lh /var/backups/inventaire/last/
 ```
 
 ---
 
 ## Backups
 
-`db-backup` runs `@daily` (midnight container time) and writes to the NAS
-mount at `${BACKUP_TARGET}` with rotation:
+Backups run on the **DB server** via a native cron job (not Docker).
+`mairie-backup.sh` runs nightly at midnight and writes gzipped `pg_dump`
+files to the NAS with rotation:
 
 - `daily/`   — last 7 dumps
 - `weekly/`  — last 4 dumps
@@ -245,9 +277,11 @@ mount at `${BACKUP_TARGET}` with rotation:
 Dumps are gzipped `pg_dump --clean --if-exists` (full schema + data).
 Each is roughly 2 MB at current data volume.
 
+See [deploy/DB_SERVER.md](deploy/DB_SERVER.md) for setup, the backup
+script, and how to verify dumps.
+
 **Test the restore monthly.** A backup you've never restored is
-Schrödinger's backup. See the "Test the backup, monthly" section in
-[deploy/RESTORE.md](deploy/RESTORE.md#test-the-backup-monthly).
+Schrödinger's backup. See [deploy/DB_SERVER.md § Test the backup](deploy/DB_SERVER.md#test-the-backup-monthly).
 
 ---
 
@@ -285,7 +319,8 @@ prometheus on `/prometheus` if you want it.
    Force a password change on first login.
 2. Add **Loki** data source: URL `http://loki-proxy:3100`, toggle
    *Basic auth* on, user/password = `LOKI_BASIC_AUTH` from `.env.prod`.
-3. Add **Prometheus** data source: URL `http://prometheus:9090`, no auth.
+3. Add **Prometheus** data source: URL `http://prometheus:9090`, toggle
+   *Basic auth* on, user `admin`, password = `PROMETHEUS_ADMIN_PASSWORD` from `.env.prod`.
 4. Create or import dashboards. Logs are labelled `{service="backend"}`,
    `{service="frontend"}`, etc.
 
@@ -296,9 +331,10 @@ prometheus on `/prometheus` if you want it.
 | What | When | How |
 |---|---|---|
 | Rotate `SECRET_KEY` | Yearly or after a breach | Edit `backend/.env.prod`, restart backend. **Existing JWTs become invalid** — users re-login. |
-| Rotate `POSTGRES_PASSWORD` | Yearly | Edit `.env.prod`, run `ALTER USER ... WITH PASSWORD ...`, restart db + backend. |
+| Rotate `POSTGRES_PASSWORD` | Yearly | `ALTER USER mairie WITH PASSWORD '...'` on the DB server, update `.env.prod` and `.pgpass` on both servers, restart backend. |
 | Rotate `MISTRAL_API_KEY` | When key leaks | Mistral dashboard, edit `backend/.env.prod`, restart backend. |
 | Rotate `LOKI_BASIC_AUTH` | Yearly | Regenerate `loki-proxy/htpasswd`, update `.env.prod`, restart `loki-proxy` + `promtail`. Update Grafana data source. |
+| Rotate `PROMETHEUS_ADMIN_PASSWORD` | Yearly | Regenerate bcrypt hash in `prometheus-web.yml`, update `.env.prod`, restart `prometheus` + `grafana`. Update Grafana data source. |
 | Rotate `GRAFANA_ADMIN_PASSWORD` | Use Grafana's own UI | Edit `.env.prod` only matters for first-boot, after that Grafana stores the password. |
 | TLS renewal | Auto | `certbot.timer` runs twice daily. Verify: `sudo systemctl status certbot.timer`. |
 | Test restore | Monthly | See RESTORE.md |
@@ -319,9 +355,10 @@ Common causes:
   `backend/.env.prod` against `backend/.env.prod.example` and check
   `docker compose --env-file .env.prod ... config` shows the variable
   resolved.
-- **Connection refused to db** — `db` not healthy yet, or `POSTGRES_HOST`
-  is wrong. The override sets `POSTGRES_HOST: db` explicitly.
-- **Migration mismatch** — backend startup may not run migrations; do it
+- **Connection refused to DB** — check `POSTGRES_HOST` in `.env.prod`
+  points to the DB server IP, and that port 5433 is reachable:
+  `nc -zv <db-server-ip> 5433`
+- **Migration mismatch** — backend startup does not run migrations; do it
   manually after every release.
 
 ### 502 from Apache
@@ -343,17 +380,15 @@ GHCR token expired or unset. Re-run:
 echo "$GHCR_TOKEN" | docker login ghcr.io -u samyachd --password-stdin
 ```
 
-### `db-backup` wrote nothing to the NAS
+### Backup wrote nothing to the NAS
 
 ```bash
-$COMPOSE exec db-backup ls -la /backups/      # is the mount visible inside?
-mountpoint /mnt/mairie-backups                 # is it mounted on the host?
-$COMPOSE logs db-backup
+# On the DB server:
+tail -50 /var/log/mairie-backup.log
+ls -lh /var/backups/inventaire/last/
+sudo -u postgres ssh -i /var/lib/postgresql/.ssh/id_ed25519 backup@<app-server-ip> "ls /var/backups/inventaire/last/"
+sudo -u postgres /usr/local/bin/mairie-backup.sh   # run manually to see the error
 ```
-
-If `/backups` is empty inside the container but `/mnt/mairie-backups` has
-files on the host, the bind mount is broken — re-check `BACKUP_TARGET` in
-`.env.prod` and `docker compose up -d --force-recreate db-backup`.
 
 ### Loki returns 401 to Grafana / Promtail
 
@@ -368,11 +403,12 @@ exactly. Regenerate with `htpasswd -nbB <user> <password>` and restart
 
 ### Migration is stuck / partially applied
 
-See the troubleshooting section of `alembic` itself, but the short version:
 ```bash
-$COMPOSE exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-  -c 'SELECT version_num FROM alembic_version;'
-$COMPOSE exec backend alembic stamp head      # mark as applied without running
+$COMPOSE exec backend alembic current
+# Check the DB directly (from the DB server):
+sudo -u postgres psql -d mairie -c 'SELECT version_num FROM alembic_version;'
+
+$COMPOSE exec backend alembic stamp head       # mark as applied without running
 $COMPOSE exec backend alembic stamp <revision> # roll the marker to a specific point
 ```
 
@@ -393,5 +429,5 @@ $COMPOSE pull && $COMPOSE up -d           # update
 $COMPOSE exec backend alembic upgrade head
 $COMPOSE logs -f backend
 $COMPOSE ps
-./deploy/restore.sh                       # data restore
+# Restore: on the DB server → sudo -u postgres /usr/local/bin/mairie-restore.sh
 ```
