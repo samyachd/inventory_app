@@ -1,4 +1,4 @@
-.PHONY: help dev prod down restart logs logs-backend logs-frontend \
+.PHONY: help dev prod deploy down restart logs logs-backend logs-frontend \
         migration migrate seed db-reset db-shell \
         backend-shell test convert \
         build-frontend \
@@ -20,6 +20,11 @@ devrun:
 	docker compose up
 
 prod:  ## Démarre la stack en mode prod
+	$(COMPOSE_PROD) up -d
+
+deploy:  ## [PROD] git pull + rebuild images + redémarre
+	git pull
+	$(COMPOSE_PROD) build --no-cache
 	$(COMPOSE_PROD) up -d
 
 down:  ## Arrête tous les conteneurs
