@@ -30,7 +30,8 @@ panic dump, restores, and restarts the backend.
 ## What's in the backup
 
 The `db-backup` sidecar runs nightly via the `prodrigestivill/postgres-backup-local`
-image and writes to `${BACKUP_TARGET}` (the NAS mount declared in `.env.prod`):
+image and writes to `${BACKUP_TARGET}` (host path declared in `.env.prod`, default
+`/var/backups/mairie`):
 
 ```
 ${BACKUP_TARGET}/
