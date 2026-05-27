@@ -4,7 +4,7 @@
         build-frontend \
         migrate-prod seed-prod db-reset-prod db-shell-prod
 
-COMPOSE_PROD = docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml
+COMPOSE_PROD = docker compose -f docker-compose.yml -f docker-compose.prod.yml
 
 help:  ## Affiche la liste des commandes disponibles
 	@echo ""

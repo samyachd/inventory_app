@@ -1,17 +1,12 @@
-# Prod overlay: pre-built images, no source mounts, prod env files only.
+# Prod overlay: pre-built images, no source mounts.
 # Run with:
-#   docker compose --env-file .env.prod \
-#     -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
-# The --env-file flag is required so that ${LOKI_BASIC_AUTH},
-# ${PROMETHEUS_ADMIN_PASSWORD}, and ${BACKUP_TARGET} are resolved at
-# compose-parse time.
-#
-# Required on the host:
-#   /.env.prod                 — POSTGRES_*, GRAFANA_ADMIN_PASSWORD,
+# Required on the host (gitignored, set once per server):
+#   /.env                      — POSTGRES_*, GRAFANA_ADMIN_PASSWORD,
 #                                LOKI_BASIC_AUTH, PROMETHEUS_ADMIN_PASSWORD,
 #                                BACKUP_TARGET
-#   /backend/.env.prod         — SECRET_KEY, MISTRAL_API_KEY, CORS_ORIGINS, etc.
+#   /backend/.env              — SECRET_KEY, MISTRAL_API_KEY, CORS_ORIGINS, etc.
 #   /loki-proxy/htpasswd       — bcrypt entry for the Loki basic-auth user
 #                                (generate with: htpasswd -nbB user password)
 #   /prometheus-web.yml        — bcrypt entry for the Prometheus basic-auth user
@@ -67,8 +62,8 @@ services:
   backend:
     image: ghcr.io/samyachd/mairie/backend:latest
     env_file:
-      - .env.prod
-      - backend/.env.prod
+      - .env
+      - backend/.env
     depends_on:
       db:
         condition: service_healthy
@@ -104,7 +99,7 @@ services:
 
   grafana:
     env_file:
-      - .env.prod
+      - .env
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       PROMETHEUS_ADMIN_PASSWORD: ${PROMETHEUS_ADMIN_PASSWORD}
