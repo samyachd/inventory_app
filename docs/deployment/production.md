@@ -12,7 +12,7 @@
                 ├─────────────────────────────────────────────────────┤
                 │  backend (container)   — FastAPI, 4 workers uvicorn│
                 │   ↓                                                 │
-                │  db (container)        — PostgreSQL 15              │
+                │  db (container)        — PostgreSQL 16              │
                 │   ↑ dumps nightly                                   │
                 │  db-backup (container) — écrit sur /backups (NAS)  │
                 └─────────────────────────────────────────────────────┘

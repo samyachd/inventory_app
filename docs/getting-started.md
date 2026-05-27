@@ -47,7 +47,7 @@ make dev
 
 Cela lance :
 
-- PostgreSQL sur le port `5432`
+- PostgreSQL sur le port `5433`
 - Backend FastAPI sur `http://localhost:8000`
 - Frontend React sur `http://localhost:5173` (via Vite)
 - Grafana sur `http://localhost:3001`

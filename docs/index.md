@@ -18,7 +18,7 @@ Système de gestion d'inventaire informatique pour la mairie : ordinateurs, écr
 ## Stack technique
 
 - **Backend** : FastAPI 0.128+ · Python 3.12+
-- **Base de données** : PostgreSQL 15 + SQLAlchemy 2.0 + Alembic
+- **Base de données** : PostgreSQL 16 + SQLAlchemy 2.0 + Alembic
 - **Validation** : Pydantic 2.12+
 - **Frontend** : React 19 (Vite)
 - **Conteneurisation** : Docker Compose
