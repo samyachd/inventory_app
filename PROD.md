@@ -2,7 +2,6 @@
 
 Everything you need to deploy, operate, and troubleshoot the inventory app
 in production. For data-restore specifics see [deploy/RESTORE.md](deploy/RESTORE.md).
-For the dedicated database server setup see [deploy/DB_SERVER.md](deploy/DB_SERVER.md).
 
 ---
 
@@ -18,9 +17,9 @@ For the dedicated database server setup see [deploy/DB_SERVER.md](deploy/DB_SERV
                 ├─────────────────────────────────────────────────────┤
                 │  backend (container)   — FastAPI, 4 uvicorn workers│
                 │   ↓                                                 │
-                │  db (container)        — Postgres 15               │
-                │   ↑ nightly dumps                                   │
-                │  db-backup (container) — writes to /backups (NAS)  │
+                │  db (container)        — PostgreSQL 16             │
+                │   ↑ nightly pg_dump                                 │
+                │  db-backup (container) — dumps to /var/backups/mairie│
                 └─────────────────────────────────────────────────────┘
 
   Observability (internal-only):
@@ -45,7 +44,6 @@ basic auth.
 - `apache2-utils` (for `htpasswd`)
 - `certbot` + `python3-certbot-apache`
 - A domain pointing to the host (A/AAAA record)
-- An SMB or NFS mount for backups (the mairie's NAS) at a known path
 - A personal access token with `read:packages` scope on GHCR if the images
   are private (skip if public)
 
@@ -64,8 +62,8 @@ basic auth.
     ├── apache/mairie.conf              ← copy to /etc/apache2/sites-available/
     ├── restore.sh                      ← Postgres restore helper
     └── RESTORE.md
-/mnt/mairie-backups/                    ← NAS mount
-└── (daily/, weekly/, monthly/, last/ created by db-backup)
+/var/backups/mairie/                    ← db-backup container writes dumps here
+└── daily/, weekly/, monthly/, last/
 /etc/apache2/sites-available/mairie.conf ← copied from the repo
 /etc/letsencrypt/live/<domain>/         ← TLS certs from certbot
 ```
@@ -89,19 +87,8 @@ cp backend/.env.prod.example backend/.env.prod
 #   MISTRAL_API_KEY: from https://console.mistral.ai/
 #   LOKI_BASIC_AUTH=mairie:<password>   (matches step 4 below)
 
-# 3. Mount the NAS at the path declared in BACKUP_TARGET
-sudo mkdir -p /mnt/mairie-backups
-sudo bash -c 'cat >> /etc/fstab <<EOF
-//nas.mairie.local/sauvegardes/mairie /mnt/mairie-backups cifs credentials=/etc/cifs-mairie,vers=3.0,uid=0,gid=0  0  0
-EOF'
-sudo bash -c 'cat > /etc/cifs-mairie <<EOF
-username=<nas-user>
-password=<nas-password>
-domain=<windows-domain-or-empty>
-EOF'
-sudo chmod 600 /etc/cifs-mairie
-sudo mount -a
-ls /mnt/mairie-backups   # should not error
+# 3. Create the backup directory (mounted by the db-backup container)
+sudo mkdir -p /var/backups/mairie
 
 # 4. Loki basic-auth credentials
 sudo apt-get install -y apache2-utils
@@ -150,7 +137,6 @@ the UI.
 | `/.env.prod` | host | gitignored | `POSTGRES_*`, `GRAFANA_ADMIN_PASSWORD`, `VITE_API_URL`, `BACKUP_TARGET`, `LOKI_BASIC_AUTH` |
 | `/backend/.env.prod` | host | gitignored | `SECRET_KEY`, `MISTRAL_API_KEY`, `CORS_ORIGINS`, `DEBUG=false`, `MISTRAL_MODEL` |
 | `/loki-proxy/htpasswd` | host | gitignored | bcrypt entry for the Loki basic-auth user |
-| `/etc/cifs-mairie` | host | n/a | NAS credentials, root-only |
 | `/etc/apache2/sites-available/mairie.conf` | host | template tracked at `deploy/apache/mairie.conf` | TLS termination + reverse proxy |
 | `/etc/letsencrypt/live/<domain>/*` | host | n/a | TLS cert (managed by certbot) |
 | `prometheus.prod.yml`, `promtail.prod.yml` | repo | tracked | observability config |
@@ -234,8 +220,8 @@ $COMPOSE exec db-backup ls -lh /backups/last/
 
 ## Backups
 
-`db-backup` runs `@daily` (midnight container time) and writes to the NAS
-mount at `${BACKUP_TARGET}` with rotation:
+`db-backup` runs `@daily` (midnight container time) and writes to
+`${BACKUP_TARGET}` on the host (default `/var/backups/mairie`) with rotation:
 
 - `daily/`   — last 7 dumps
 - `weekly/`  — last 4 dumps
@@ -319,8 +305,8 @@ Common causes:
   `backend/.env.prod` against `backend/.env.prod.example` and check
   `docker compose --env-file .env.prod ... config` shows the variable
   resolved.
-- **Connection refused to db** — `db` not healthy yet, or `POSTGRES_HOST`
-  is wrong. The override sets `POSTGRES_HOST: db` explicitly.
+- **Connection refused to db** — `db` container not healthy yet. Check:
+  `$COMPOSE ps db` and `$COMPOSE logs --tail 50 db`.
 - **Migration mismatch** — backend startup may not run migrations; do it
   manually after every release.
 
@@ -343,17 +329,13 @@ GHCR token expired or unset. Re-run:
 echo "$GHCR_TOKEN" | docker login ghcr.io -u samyachd --password-stdin
 ```
 
-### `db-backup` wrote nothing to the NAS
+### `db-backup` wrote nothing
 
 ```bash
-$COMPOSE exec db-backup ls -la /backups/      # is the mount visible inside?
-mountpoint /mnt/mairie-backups                 # is it mounted on the host?
-$COMPOSE logs db-backup
+$COMPOSE logs --tail 50 db-backup
+ls -lh /var/backups/mairie/last/
+$COMPOSE exec db-backup /backup.sh   # run manually to see the error
 ```
-
-If `/backups` is empty inside the container but `/mnt/mairie-backups` has
-files on the host, the bind mount is broken — re-check `BACKUP_TARGET` in
-`.env.prod` and `docker compose up -d --force-recreate db-backup`.
 
 ### Loki returns 401 to Grafana / Promtail
 

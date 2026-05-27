@@ -3,25 +3,55 @@
 #   docker compose --env-file .env.prod \
 #     -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
-# The --env-file flag is required so that ${LOKI_BASIC_AUTH} and
-# ${PROMETHEUS_ADMIN_PASSWORD} are resolved at compose-parse time.
+# The --env-file flag is required so that ${LOKI_BASIC_AUTH},
+# ${PROMETHEUS_ADMIN_PASSWORD}, and ${BACKUP_TARGET} are resolved at
+# compose-parse time.
 #
 # Required on the host:
-#   /.env.prod                 — POSTGRES_*, GRAFANA_ADMIN_PASSWORD, VITE_API_URL,
-#                                LOKI_BASIC_AUTH, PROMETHEUS_ADMIN_PASSWORD
+#   /.env.prod                 — POSTGRES_*, GRAFANA_ADMIN_PASSWORD,
+#                                LOKI_BASIC_AUTH, PROMETHEUS_ADMIN_PASSWORD,
+#                                BACKUP_TARGET
 #   /backend/.env.prod         — SECRET_KEY, MISTRAL_API_KEY, CORS_ORIGINS, etc.
 #   /loki-proxy/htpasswd       — bcrypt entry for the Loki basic-auth user
 #                                (generate with: htpasswd -nbB user password)
 #   /prometheus-web.yml        — bcrypt entry for the Prometheus basic-auth user
 #                                (copy from prometheus-web.yml.example and fill in hash)
-#
-# Backups: managed natively on the DB server. See deploy/DB_SERVER.md.
 
 services:
+  db:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  db-backup:
+    image: prodrigestivill/postgres-backup-local
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      BACKUP_DIR: /backups
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 12
+    volumes:
+      - ${BACKUP_TARGET}:/backups
+    depends_on:
+      - db
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+
   frontend:
     image: ghcr.io/samyachd/mairie/frontend:latest
-    # Bind 127.0.0.1:80 so the host's reverse proxy (Apache) handles TLS
-    # and public exposure. Drop the 127.0.0.1 prefix only if no reverse proxy.
+    # Bind 127.0.0.1:80 so the host's Apache handles TLS and public exposure.
     ports:
       - "127.0.0.1:80:80"
     depends_on:
@@ -39,8 +69,9 @@ services:
     env_file:
       - .env.prod
       - backend/.env.prod
-    environment:
-      POSTGRES_HOST: ${POSTGRES_HOST}
+    depends_on:
+      db:
+        condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/').status == 200 else 1)"]
@@ -54,9 +85,6 @@ services:
         limits:
           cpus: '1.0'
           memory: 512M
-
-  # Backups are managed natively on the DB server via cron + pg_dump.
-  # See deploy/DB_SERVER.md § Backup script.
 
   prometheus:
     volumes:
