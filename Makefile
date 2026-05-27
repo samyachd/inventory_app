@@ -1,8 +1,8 @@
 .PHONY: help dev prod deploy down restart logs logs-backend logs-frontend \
         migration migrate seed db-reset db-shell \
-        backend-shell test convert \
+        backend-shell test convert clean \
         build-frontend \
-        migrate-prod seed-prod db-reset-prod db-shell-prod
+        migrate-prod seed-prod db-reset-prod db-shell-prod convert-prod clean-prod
 
 COMPOSE_PROD = docker compose -f docker-compose.yml -f docker-compose.prod.yml
 
@@ -86,11 +86,17 @@ test:  ## Lance les tests pytest dans le conteneur backend
 backend-shell:  ## Ouvre un shell bash dans le conteneur backend
 	docker compose exec backend bash
 
-convert:  ## Convertit Excel en JSON (utilitaire)
+convert:  ## Convertit Excel → JSON brut (dev)
 	docker compose exec -u root backend uv run python -m utils.convert_excel
 
-clean:
+clean:  ## Nettoie et normalise le JSON brut (dev)
 	docker compose exec -u root backend uv run python -m utils.clean_to_models
+
+convert-prod:  ## [PROD] Convertit Excel → JSON brut
+	$(COMPOSE_PROD) exec -u root backend uv run python -m utils.convert_excel
+
+clean-prod:  ## [PROD] Nettoie et normalise le JSON brut
+	$(COMPOSE_PROD) exec -u root backend uv run python -m utils.clean_to_models
 
 build-frontend:  ## Build le frontend pour la prod (local, sans Docker)
 	cd frontend && npm run build

@@ -64,6 +64,11 @@ services:
     env_file:
       - .env
       - backend/.env
+    volumes:
+      - ./data:/data
+    environment:
+      CLEAN_EXTRACTS_DIR: /data/clean_extracts
+      RAW_EXTRACTS_DIR: /data/raw_extracts
     depends_on:
       db:
         condition: service_healthy
