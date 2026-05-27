@@ -80,7 +80,7 @@ make seed
 Pour importer des données depuis un fichier Excel :
 
 ```bash
-# 1. Placer le fichier dans data/excel_test/
+# 1. Placer le fichier dans data/excel/
 # 2. Extraire les données
 make convert
 

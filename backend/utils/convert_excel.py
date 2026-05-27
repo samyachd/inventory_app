@@ -8,7 +8,7 @@ TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 OUTPUT = OUTPUT_DIR / f"seed_data_{TIMESTAMP}.json"
 
 fichiers = {
-    "inventaire": "../data/excel_test/INVENTAIRE_PC.xlsx",
+    "inventaire": "../data/excel/INVENTAIRE_PC.xlsx",
 }
 
 if not fichiers:

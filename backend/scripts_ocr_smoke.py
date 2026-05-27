@@ -3,7 +3,7 @@ from services.ocr import extraire_document
 from pathlib import Path
 
 BASE = Path(__file__).parent
-path = BASE.parent / "data" / "files_test" /"test_facture.pdf"
+path = BASE.parent / "data" / "sample_files" / "facture.pdf"
 
 async def main():
     with open(path, "rb") as f:

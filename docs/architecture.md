@@ -43,7 +43,7 @@ mairie/
 │   ├── apache/                # Configuration Apache vhost
 │   └── restore.sh             # Script de restauration DB
 ├── data/                      # Données locales (gitignorées)
-│   ├── excel_test/            # Fichiers Excel sources
+│   ├── excel/                 # Fichiers Excel sources
 │   ├── raw_extracts/          # Extractions brutes
 │   ├── clean_extracts/        # Extractions nettoyées
 │   └── seed/                  # JSON de seed de la base
