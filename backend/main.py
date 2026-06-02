@@ -9,12 +9,23 @@ from core.tasks import purge_expired_tokens, prune_ocr_stats, check_warranty_exp
 from api.routes import ordinateur, user, auth, agent, ecran, licence, document, inventaire, model, log, schema_router, qrcode_router
 from fastapi.middleware.cors import CORSMiddleware
 from core.logger import setup_logger, logger
+from db.session import SessionLocal
+from db.seed import seed_admin
 
 setup_logger()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    db = SessionLocal()
+    try:
+        seed_admin(db)
+    except Exception as e:
+        logger.warning(f"seed_admin skipped (migrations not yet applied?): {e}")
+        db.rollback()
+    finally:
+        db.close()
+
     tasks = [
         asyncio.create_task(purge_expired_tokens()),
         asyncio.create_task(prune_ocr_stats()),
