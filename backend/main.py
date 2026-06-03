@@ -1,12 +1,11 @@
 import asyncio
 import os
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 from core import settings
 from core.tasks import purge_expired_tokens, prune_ocr_stats, check_warranty_expiry
-from api.routes import ordinateur, user, auth, agent, ecran, licence, document, inventaire, model, log, schema_router, qrcode_router
+from api.routes import ordinateur, user, auth, agent, ecran, licence, document, inventaire, model, log, schema_router
 from fastapi.middleware.cors import CORSMiddleware
 from core.logger import setup_logger, logger
 from db.session import SessionLocal
@@ -71,7 +70,6 @@ app.include_router(document, prefix="/documents", tags=["documents"])
 app.include_router(model, prefix="/models", tags=["models"])
 app.include_router(log, prefix="/logs", tags=["logs"])
 app.include_router(schema_router, prefix="/schema", tags=["schema"])
-app.include_router(qrcode_router, prefix="/qrcode", tags=["qrcode"])
 
 # @app.lifespan("startup")
 # async def startup():

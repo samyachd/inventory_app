@@ -5,7 +5,7 @@ import { useDeleteEcran } from "@/app/hooks/useEcran";
 import { EcranCreateDialog } from "./EcranCreateDialog";
 import { EcranEditDialog } from "./EcranEditDialog";
 import { DataTable } from "../DataTable/DataTable";
-import { QrDownloadButton } from "../QrDownloadButton";
+
 import { useAuth } from "@/app/hooks/useAuth";
 
 interface Props {
@@ -38,16 +38,7 @@ export function EcranTable({ data, agents, documents, hideSearch }: Props) {
               : `Supprimer ${rows.length} écrans ?`;
           if (confirm(msg)) rows.forEach((r) => deleteEcran.mutate(r.id));
         }}
-        toolbarRight={
-          <div className="flex items-center gap-2">
-            <QrDownloadButton
-              endpoint="/qrcode/ecran/all"
-              filename="qrcodes-ecrans.zip"
-              label="Télécharger tous les QR"
-            />
-            <EcranCreateDialog agents={agents} disabled={!canWrite} />
-          </div>
-        }
+        toolbarRight={<EcranCreateDialog agents={agents} disabled={!canWrite} />}
       />
       {editingEcran && (
         <EcranEditDialog

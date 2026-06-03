@@ -5,7 +5,7 @@ import { useDeleteOrdinateur } from "@/app/hooks/useOrdinateur";
 import { OrdinateurCreateDialog } from "./OrdinateurCreateDialog";
 import { OrdinateurEditDialog } from "./OrdinateurEditDialog";
 import { DataTable } from "../DataTable/DataTable";
-import { QrDownloadButton } from "../QrDownloadButton";
+
 import { useAuth } from "@/app/hooks/useAuth";
 
 interface Props {
@@ -39,16 +39,7 @@ export function OrdinateurTable({ data, agents, documents, licences, hideSearch 
               : `Supprimer ${rows.length} ordinateurs ?`;
           if (confirm(msg)) rows.forEach((r) => deleteOrdinateur.mutate(r.id));
         }}
-        toolbarRight={
-          <div className="flex items-center gap-2">
-            <QrDownloadButton
-              endpoint="/qrcode/ordinateur/all"
-              filename="qrcodes-ordinateurs.zip"
-              label="Télécharger tous les QR"
-            />
-            <OrdinateurCreateDialog agents={agents} disabled={!canWrite} />
-          </div>
-        }
+        toolbarRight={<OrdinateurCreateDialog agents={agents} disabled={!canWrite} />}
       />
       {editingOrdinateur && (
         <OrdinateurEditDialog

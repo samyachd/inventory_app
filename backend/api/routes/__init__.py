@@ -4,4 +4,3 @@ from .user import user
 from .model import model
 from .logs import log
 from .schema import schema_router
-from .qrcode import qrcode_router

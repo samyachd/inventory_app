@@ -4,10 +4,11 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
-import { extractFromFile, type OcrExtractedData } from "@/app/services/document";
+import { extractFromFile, createDocument, type OcrExtractedData } from "@/app/services/document";
 import { createOrdinateur } from "@/app/services/ordinateur";
 import { createEcran } from "@/app/services/ecran";
 import { useInventaire } from "@/app/hooks/useInventaire";
+import type { DocumentType } from "@/app/types";
 
 // ─── Draft types (all fields are strings for controlled inputs) ───────────────
 
@@ -22,10 +23,7 @@ type OrdDraft = {
   date_achat: string;
   fin_garantie: string;
   proprietaire: string;
-  service: string;
-  batiment: string;
   nom_reseau: string;
-  ip_address: string;
   mac_ethernet: string;
   mac_wifi: string;
   tag_chargeur: string;
@@ -44,26 +42,49 @@ type EcrDraft = {
   date_achat: string;
   fin_garantie: string;
   proprietaire: string;
-  service: string;
-  batiment: string;
   agent_id: string;
+};
+
+type DocDraft = {
+  type: DocumentType;
+  nom: string;
+  numero: string;
+  date_document: string;
+  montant_ttc: string;
+  montant_ht: string;
 };
 
 const uid = () => Math.random().toString(36).slice(2);
 
+const emptyDoc = (): DocDraft => ({
+  type: "facture", nom: "", numero: "", date_document: "",
+  montant_ttc: "", montant_ht: "",
+});
+
 const emptyOrd = (): OrdDraft => ({
   _id: uid(), tag: "", marque: "", type_equipement: "PC FIXE",
   os: "", ram: "", fournisseur: "", date_achat: "", fin_garantie: "",
-  proprietaire: "", service: "", batiment: "", nom_reseau: "",
-  ip_address: "", mac_ethernet: "", mac_wifi: "", tag_chargeur: "",
+  proprietaire: "", nom_reseau: "",
+  mac_ethernet: "", mac_wifi: "", tag_chargeur: "",
   watt: "", lecteur_cd: null, absolute_dell: null, agent_id: "",
 });
 
 const emptyEcr = (): EcrDraft => ({
   _id: uid(), tag: "", marque: "", taille: "", fournisseur: "",
-  date_achat: "", fin_garantie: "", proprietaire: "", service: "",
-  batiment: "", agent_id: "",
+  date_achat: "", fin_garantie: "", proprietaire: "", agent_id: "",
 });
+
+function ocrToDoc(items: OcrExtractedData[], fileName: string): DocDraft {
+  const first = items[0] ?? {};
+  return {
+    type: (first.type_document as DocumentType) ?? "facture",
+    nom: fileName,
+    numero: first.numero_document ?? "",
+    date_document: first.date_document ?? "",
+    montant_ttc: first.montant_ttc != null ? String(first.montant_ttc) : "",
+    montant_ht: first.montant_ht != null ? String(first.montant_ht) : "",
+  };
+}
 
 function ocrToRows(items: OcrExtractedData[]): { ords: OrdDraft[]; ecrs: EcrDraft[] } {
   const ords: OrdDraft[] = [];
@@ -77,8 +98,6 @@ function ocrToRows(items: OcrExtractedData[]): { ords: OrdDraft[]; ecrs: EcrDraf
       date_achat: ocr.date_achat ?? "",
       fin_garantie: ocr.fin_garantie ?? "",
       proprietaire: ocr.proprietaire ?? "",
-      service: ocr.service ?? "",
-      batiment: ocr.batiment ?? "",
     };
     if (ocr.type_equipement === "ECRAN") {
       ecrs.push({
@@ -92,7 +111,6 @@ function ocrToRows(items: OcrExtractedData[]): { ords: OrdDraft[]; ecrs: EcrDraf
         ram: ocr.ram ?? "",
         os: ocr.os ?? "",
         nom_reseau: ocr.nom_reseau ?? "",
-        ip_address: ocr.ip_address ?? "",
         mac_ethernet: ocr.mac_ethernet ?? "",
         mac_wifi: ocr.mac_wifi ?? "",
         tag_chargeur: ocr.tag_chargeur ?? "",
@@ -168,7 +186,7 @@ function OrdTable({
         <table className="text-xs w-full">
           <thead className="bg-gray-50 text-muted-foreground">
             <tr>
-              {["Tag", "Marque", "Type", "OS", "RAM", "IP", "Fournisseur", "Date achat", "Fin garantie", "Service", "Bâtiment", "Agent", ""].map((h) => (
+              {["Tag", "Marque", "Type", "OS", "RAM", "Fournisseur", "Date achat", "Fin garantie", "Agent", ""].map((h) => (
                 <th key={h} className="px-2 py-2 text-left font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -185,12 +203,9 @@ function OrdTable({
                 </TCell>
                 <TCell><TInput value={r.os} onChange={(v) => onChange(r._id, "os", v)} placeholder="Windows 11" /></TCell>
                 <TCell><TInput value={r.ram} onChange={(v) => onChange(r._id, "ram", v)} placeholder="8 Go" /></TCell>
-                <TCell><TInput value={r.ip_address} onChange={(v) => onChange(r._id, "ip_address", v)} placeholder="192.168.1.1" /></TCell>
                 <TCell><TInput value={r.fournisseur} onChange={(v) => onChange(r._id, "fournisseur", v)} placeholder="Fournisseur" /></TCell>
                 <TCell><TInput type="date" value={r.date_achat} onChange={(v) => onChange(r._id, "date_achat", v)} /></TCell>
                 <TCell><TInput type="date" value={r.fin_garantie} onChange={(v) => onChange(r._id, "fin_garantie", v)} /></TCell>
-                <TCell><TInput value={r.service} onChange={(v) => onChange(r._id, "service", v)} placeholder="Service" /></TCell>
-                <TCell><TInput value={r.batiment} onChange={(v) => onChange(r._id, "batiment", v)} placeholder="Bâtiment" /></TCell>
                 <TCell>
                   <TSelect value={r.agent_id} onChange={(v) => onChange(r._id, "agent_id", v)}>
                     <option value="">—</option>
@@ -231,7 +246,7 @@ function EcrTable({
         <table className="text-xs w-full">
           <thead className="bg-gray-50 text-muted-foreground">
             <tr>
-              {["Tag", "Marque", "Taille (po)", "Fournisseur", "Date achat", "Fin garantie", "Service", "Bâtiment", "Agent", ""].map((h) => (
+              {["Tag", "Marque", "Taille (po)", "Fournisseur", "Date achat", "Fin garantie", "Agent", ""].map((h) => (
                 <th key={h} className="px-2 py-2 text-left font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -245,8 +260,6 @@ function EcrTable({
                 <TCell><TInput value={r.fournisseur} onChange={(v) => onChange(r._id, "fournisseur", v)} placeholder="Fournisseur" /></TCell>
                 <TCell><TInput type="date" value={r.date_achat} onChange={(v) => onChange(r._id, "date_achat", v)} /></TCell>
                 <TCell><TInput type="date" value={r.fin_garantie} onChange={(v) => onChange(r._id, "fin_garantie", v)} /></TCell>
-                <TCell><TInput value={r.service} onChange={(v) => onChange(r._id, "service", v)} placeholder="Service" /></TCell>
-                <TCell><TInput value={r.batiment} onChange={(v) => onChange(r._id, "batiment", v)} placeholder="Bâtiment" /></TCell>
                 <TCell>
                   <TSelect value={r.agent_id} onChange={(v) => onChange(r._id, "agent_id", v)}>
                     <option value="">—</option>
@@ -278,6 +291,7 @@ export function Ocr() {
   const [dragging, setDragging] = useState(false);
   const [ords, setOrds] = useState<OrdDraft[]>([]);
   const [ecrs, setEcrs] = useState<EcrDraft[]>([]);
+  const [docDraft, setDocDraft] = useState<DocDraft>(emptyDoc());
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [completude, setCompletude] = useState<number>(0);
@@ -289,6 +303,7 @@ export function Ocr() {
   const reset = () => {
     setOrds([]);
     setEcrs([]);
+    setDocDraft(emptyDoc());
     setErrorMessage("");
     setCompletude(0);
     setPhase("upload");
@@ -306,6 +321,8 @@ export function Ocr() {
         setPhase("low_confidence");
         return;
       }
+
+      setDocDraft(ocrToDoc(donnees, file.name));
 
       if (metriques.taux_completude < LOW_CONFIDENCE_THRESHOLD) {
         setOrds(o);
@@ -344,10 +361,12 @@ export function Ocr() {
   const handleConfirm = async () => {
     setSubmitting(true);
     let errors = 0;
+    const ordinateur_ids: number[] = [];
+    const ecran_ids: number[] = [];
 
     for (const r of ords) {
       try {
-        await createOrdinateur({
+        const created = await createOrdinateur({
           tag: r.tag || null,
           marque: r.marque || null,
           type_equipement: r.type_equipement || null,
@@ -357,10 +376,10 @@ export function Ocr() {
           date_achat: r.date_achat || null,
           fin_garantie: r.fin_garantie || null,
           proprietaire: r.proprietaire || null,
-          service: r.service || null,
-          batiment: r.batiment || null,
+          service: null,
+          batiment: null,
+          ip_address: null,
           nom_reseau: r.nom_reseau || null,
-          ip_address: r.ip_address || null,
           mac_ethernet: r.mac_ethernet || null,
           mac_wifi: r.mac_wifi || null,
           tag_chargeur: r.tag_chargeur || null,
@@ -369,6 +388,7 @@ export function Ocr() {
           absolute_dell: r.absolute_dell,
           agent_id: r.agent_id ? Number(r.agent_id) : null,
         });
+        ordinateur_ids.push(created.id);
       } catch {
         errors++;
       }
@@ -376,7 +396,7 @@ export function Ocr() {
 
     for (const r of ecrs) {
       try {
-        await createEcran({
+        const created = await createEcran({
           tag: r.tag || null,
           marque: r.marque || null,
           taille: r.taille ? Number(r.taille) : null,
@@ -384,9 +404,28 @@ export function Ocr() {
           date_achat: r.date_achat || null,
           fin_garantie: r.fin_garantie || null,
           proprietaire: r.proprietaire || null,
-          service: r.service || null,
-          batiment: r.batiment || null,
+          service: null,
+          batiment: null,
           agent_id: r.agent_id ? Number(r.agent_id) : null,
+        });
+        ecran_ids.push(created.id);
+      } catch {
+        errors++;
+      }
+    }
+
+    if (docDraft.numero || docDraft.nom) {
+      try {
+        await createDocument({
+          type: docDraft.type,
+          nom: docDraft.nom,
+          numero: docDraft.numero,
+          path: docDraft.nom,
+          date_document: docDraft.date_document || new Date().toISOString().slice(0, 10),
+          montant_ttc: docDraft.montant_ttc ? Number(docDraft.montant_ttc) : null,
+          montant_ht: docDraft.montant_ht ? Number(docDraft.montant_ht) : null,
+          ordinateur_ids,
+          ecran_ids,
         });
       } catch {
         errors++;
@@ -534,6 +573,71 @@ export function Ocr() {
             <Check className="w-4 h-4 mr-2" />
             {submitting ? "Enregistrement…" : `Confirmer (${ords.length + ecrs.length})`}
           </Button>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-sm mb-2">Document</h3>
+        <div className="rounded border p-3 bg-gray-50 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Type</label>
+            <select
+              value={docDraft.type}
+              onChange={(e) => setDocDraft((d) => ({ ...d, type: e.target.value as DocumentType }))}
+              className="h-8 text-xs border rounded px-2 bg-white"
+            >
+              <option value="facture">Facture</option>
+              <option value="bon_de_commande">Bon de commande</option>
+              <option value="devis">Devis</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1 lg:col-span-2">
+            <label className="text-xs text-muted-foreground">Nom</label>
+            <Input
+              value={docDraft.nom}
+              onChange={(e) => setDocDraft((d) => ({ ...d, nom: e.target.value }))}
+              placeholder="Nom du document"
+              className="h-8 text-xs"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Numéro</label>
+            <Input
+              value={docDraft.numero}
+              onChange={(e) => setDocDraft((d) => ({ ...d, numero: e.target.value }))}
+              placeholder="FA-2024-001"
+              className="h-8 text-xs"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Date</label>
+            <Input
+              type="date"
+              value={docDraft.date_document}
+              onChange={(e) => setDocDraft((d) => ({ ...d, date_document: e.target.value }))}
+              className="h-8 text-xs"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Montant TTC</label>
+            <Input
+              type="number"
+              value={docDraft.montant_ttc}
+              onChange={(e) => setDocDraft((d) => ({ ...d, montant_ttc: e.target.value }))}
+              placeholder="0.00"
+              className="h-8 text-xs"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Montant HT</label>
+            <Input
+              type="number"
+              value={docDraft.montant_ht}
+              onChange={(e) => setDocDraft((d) => ({ ...d, montant_ht: e.target.value }))}
+              placeholder="0.00"
+              className="h-8 text-xs"
+            />
+          </div>
         </div>
       </div>
 

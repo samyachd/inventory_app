@@ -4,7 +4,6 @@ import type { Agent, Document, DocumentType, Ecran } from "@/app/types";
 import { SortableHeader } from "../components/DataTable/SortableHeader";
 import { DocumentLink } from "../components/DocumentLink";
 import { indexDocsByOwner } from "./useOrdinateurColumns";
-import { QrDownloadButton } from "../components/QrDownloadButton";
 
 interface Options {
   agents: Agent[];
@@ -124,16 +123,6 @@ export function useEcranColumns({
       header: "Facture",
       cell: ({ row }) => (
         <DocumentLink doc={docFor(row.original.id, "facture")} />
-      ),
-    },
-    {
-      id: "qrcode",
-      header: "QR",
-      cell: ({ row }) => (
-        <QrDownloadButton
-          endpoint={`/qrcode/ecran/${row.original.id}`}
-          filename={`qr-ecr-${row.original.tag ?? row.original.id}.png`}
-        />
       ),
     },
   ];
