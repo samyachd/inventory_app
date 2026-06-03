@@ -69,6 +69,7 @@ services:
     environment:
       CLEAN_EXTRACTS_DIR: /data/clean_extracts
       RAW_EXTRACTS_DIR: /data/raw_extracts
+      OTEL_ENDPOINT: "http://tempo:4318/v1/traces"
     depends_on:
       db:
         condition: service_healthy
@@ -110,6 +111,16 @@ services:
       PROMETHEUS_ADMIN_PASSWORD: ${PROMETHEUS_ADMIN_PASSWORD}
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  tempo:
+    volumes:
+      - tempo_data:/var/tempo
     restart: unless-stopped
     deploy:
       resources:
@@ -166,3 +177,4 @@ services:
 volumes:
   prometheus_data:
   loki_data:
+  tempo_data:

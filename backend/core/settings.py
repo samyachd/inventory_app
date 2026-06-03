@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     MISTRAL_MODEL: str = "mistral-ocr-latest"
     CORS_ORIGINS: str
 
+    OTEL_ENDPOINT: str = ""
+
     @property
     def DATABASE_URL(self) -> URL:
         return URL.create(

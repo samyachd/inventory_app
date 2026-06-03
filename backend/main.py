@@ -8,8 +8,10 @@ from core.tasks import purge_expired_tokens, prune_ocr_stats, check_warranty_exp
 from api.routes import ordinateur, user, auth, agent, ecran, licence, document, inventaire, model, log, schema_router
 from fastapi.middleware.cors import CORSMiddleware
 from core.logger import setup_logger, logger
+from core.telemetry import setup_telemetry
 from db.session import SessionLocal
 from db.seed import seed_admin
+from db.db import engine
 
 setup_logger()
 
@@ -42,7 +44,8 @@ app = FastAPI(
     debug=settings.DEBUG,
     lifespan=lifespan,
 )
-Instrumentator().instrument(app).expose(app)
+instrumentator = Instrumentator().instrument(app)
+setup_telemetry(app, engine, settings.APP_NAME, settings.OTEL_ENDPOINT)
 logger.info(f"Démarrage de l'application {settings.APP_NAME} version {settings.VERSION}")
 
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
@@ -70,6 +73,8 @@ app.include_router(document, prefix="/documents", tags=["documents"])
 app.include_router(model, prefix="/models", tags=["models"])
 app.include_router(log, prefix="/logs", tags=["logs"])
 app.include_router(schema_router, prefix="/schema", tags=["schema"])
+
+instrumentator.expose(app)
 
 # @app.lifespan("startup")
 # async def startup():

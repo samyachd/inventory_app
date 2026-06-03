@@ -16,6 +16,7 @@ services:
       # Auto-detected by db.seed; explicit env below makes it greppable.
       - ./data:/data
     environment:
+      OTEL_ENDPOINT: "http://tempo:4318/v1/traces"
       CLEAN_EXTRACTS_DIR: /data/clean_extracts
     depends_on:
       db:
@@ -41,6 +42,12 @@ services:
   grafana:
     ports:
       - "3001:3000"
+
+  tempo:
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
 
   loki:
     ports:
