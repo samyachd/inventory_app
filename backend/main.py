@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 from core import settings
 from core.tasks import purge_expired_tokens, prune_ocr_stats, check_warranty_expiry
-from api.routes import ordinateur, user, auth, agent, ecran, licence, document, inventaire, model, log, schema_router
+from api.routes import ordinateur, user, auth, agent, ecran, licence, document, inventaire, model, log
 from fastapi.middleware.cors import CORSMiddleware
 from core.logger import setup_logger, logger
 from core.telemetry import setup_telemetry
@@ -72,7 +72,6 @@ app.include_router(agent, prefix="/agents", tags=["agents"])
 app.include_router(document, prefix="/documents", tags=["documents"])
 app.include_router(model, prefix="/models", tags=["models"])
 app.include_router(log, prefix="/logs", tags=["logs"])
-app.include_router(schema_router, prefix="/schema", tags=["schema"])
 
 instrumentator.expose(app)
 
