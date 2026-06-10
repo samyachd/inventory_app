@@ -1,20 +1,53 @@
 import asyncio
 import os
 from contextlib import asynccontextmanager
-
+from pathlib import Path
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 from core import settings
 from core.tasks import purge_expired_tokens, prune_ocr_stats, check_warranty_expiry
-from api.routes import ordinateur, user, auth, agent, ecran, licence, document, inventaire, model, log, schema_router, qrcode_router
+from api.routes import ordinateur, user, auth, agent, ecran, licence, document, inventaire, model, log
 from fastapi.middleware.cors import CORSMiddleware
 from core.logger import setup_logger, logger
+from core.telemetry import setup_telemetry
+from db.session import SessionLocal
+from db.seed import seed_admin
+from db.db import engine
 
 setup_logger()
 
 
+def run_migrations() -> None:
+    """Bring the database schema up to head on boot, so the running code never
+    races ahead of the schema. Uses the same DB as the app (env.py reads
+    settings.DATABASE_URL). Paths are resolved absolutely so it works regardless
+    of the launch CWD."""
+    from alembic.config import Config
+    from alembic import command
+
+    base = Path(__file__).resolve().parent
+    cfg = Config(str(base / "alembic.ini"))
+    cfg.set_main_option("script_location", str(base / "alembic"))
+    command.upgrade(cfg, "head")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    try:
+        run_migrations()
+        logger.info("Migrations Alembic appliquées (upgrade head)")
+    except Exception as e:
+        logger.error(f"Échec des migrations Alembic au démarrage : {e}")
+
+    db = SessionLocal()
+    try:
+        seed_admin(db)
+    except Exception as e:
+        logger.warning(f"seed_admin skipped (migrations not yet applied?): {e}")
+        db.rollback()
+    finally:
+        db.close()
+
     tasks = [
         asyncio.create_task(purge_expired_tokens()),
         asyncio.create_task(prune_ocr_stats()),
@@ -32,7 +65,8 @@ app = FastAPI(
     debug=settings.DEBUG,
     lifespan=lifespan,
 )
-Instrumentator().instrument(app).expose(app)
+instrumentator = Instrumentator().instrument(app)
+setup_telemetry(app, engine, settings.APP_NAME, settings.OTEL_ENDPOINT)
 logger.info(f"Démarrage de l'application {settings.APP_NAME} version {settings.VERSION}")
 
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
@@ -59,8 +93,8 @@ app.include_router(agent, prefix="/agents", tags=["agents"])
 app.include_router(document, prefix="/documents", tags=["documents"])
 app.include_router(model, prefix="/models", tags=["models"])
 app.include_router(log, prefix="/logs", tags=["logs"])
-app.include_router(schema_router, prefix="/schema", tags=["schema"])
-app.include_router(qrcode_router, prefix="/qrcode", tags=["qrcode"])
+
+instrumentator.expose(app)
 
 # @app.lifespan("startup")
 # async def startup():

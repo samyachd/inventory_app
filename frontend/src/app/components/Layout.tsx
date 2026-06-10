@@ -29,7 +29,7 @@ export function Layout() {
   const navigation = [
     { name: "Inventaire", href: "/", icon: Package },
 ...(role === "admin" ? [{ name: "Administration", href: "/administration", icon: ShieldCheck }] : []),
-    ...(role !== "read" ? [{ name: "OCR", href: "/ocr", icon: ScanLine }] : []),
+    ...(role !== "read" ? [{ name: "Entrée multiple via documents", href: "/ocr", icon: ScanLine }] : []),
   ];
 
   const isActive = (path: string) => {

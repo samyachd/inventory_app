@@ -40,7 +40,7 @@ export function DocumentTable({ data, ordinateurs, ecrans, licences }: Props) {
     [data, typeFilter]
   );
 
-  const columns = useDocumentColumns({ ordinateurs, ecrans, licences });
+  const columns = useDocumentColumns();
 
   return (
     <>

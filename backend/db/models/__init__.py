@@ -6,4 +6,5 @@ from .office_licence import OfficeLicence
 from .document import Document, DocumentType
 from .base import TokenBlacklist
 from .ocr_stats import OcrStat
+from .ocr_result import OcrResult
 from .logs import Log

@@ -22,13 +22,13 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
         User.email == credentials.email,
     ).first()
     
-    if not utilisateur:
+    # Single generic message for both "no such user" and "wrong password" so the
+    # response doesn't reveal which emails are registered (user enumeration).
+    if not utilisateur or not verifier_mot_de_passe(
+        credentials.password, utilisateur.mot_de_passe_hash
+    ):
         logger.warning(f"Échec de connexion pour l'email: {credentials.email}")
-        raise HTTPException(status_code=401, detail="L'utilisateur n'existe pas")
-
-    if not verifier_mot_de_passe(credentials.password, utilisateur.mot_de_passe_hash):
-        logger.warning(f"Échec de connexion pour l'email: {credentials.email}")
-        raise HTTPException(status_code=401, detail="Mot de passe incorrect")
+        raise HTTPException(status_code=401, detail="Identifiants invalides")
 
     access_token = creer_access_token(data={"sub": utilisateur.email, "role":utilisateur.role})
 
