@@ -7,22 +7,33 @@ from core.settings import settings
 
 client = Mistral(api_key=settings.MISTRAL_API_KEY)
 
-CHAMPS = [
-    # Document
+# Fields the LLM extracts, tiered by how reliably they appear on a procurement
+# document (devis / bon de commande / facture).
+#
+# CHAMPS_DOCUMENT + CHAMPS_LIGNE_CORE (= CHAMPS_ATTENDUS) are realistically
+# printed on almost every document, so `taux_completude` is weighted ONLY on
+# these — the metric then measures extraction quality, not how sparse the
+# document format is.
+#
+# CHAMPS_OPPORTUNISTES appear only when the supplier spells them out in the line
+# description; the model fills them when present but they don't count against
+# completeness. Everything else (IP, MAC, propriétaire, service, garantie,
+# accessoires…) is a runtime/internal attribute that is never on a purchase
+# document — the user fills those in during the review step, not here.
+
+CHAMPS_DOCUMENT = [
     "type_document", "numero_document", "numero_de_commande",
-    "date_document", "montant_ttc", "montant_ht",
-    # Common equipment
-    "type_equipement", "marque", "tag", "fournisseur",
-    "date_achat", "fin_garantie", "proprietaire", "service", "batiment",
-    # Ordinateur-specific
-    "ram", "os", "nom_reseau", "ip_address",
-    "mac_ethernet", "mac_wifi", "tag_chargeur", "watt",
-    "clef_wifi", "lecteur_cd", "casque", "absolute_dell",
-    # Ecran-specific
-    "taille",
-    # Licence-specific
-    "type_licence", "version_logiciel", "clef_licence", "mail_activation",
+    "date_document", "montant_ht", "montant_ttc",
 ]
+CHAMPS_LIGNE_CORE = [
+    "type_equipement", "marque", "designation", "quantite", "fournisseur",
+]
+CHAMPS_OPPORTUNISTES = [
+    "ram", "os", "taille", "type_licence", "version_logiciel", "tag",
+]
+
+# Completeness is weighted only on what a document realistically contains.
+CHAMPS_ATTENDUS = CHAMPS_DOCUMENT + CHAMPS_LIGNE_CORE
 
 
 async def extraire_document(contenu: bytes, type_mime: str) -> dict:
@@ -56,59 +67,44 @@ async def extraire_document(contenu: bytes, type_mime: str) -> dict:
         messages=[
             {
                 "role": "user",
-                "content": f"""Extrais TOUS les équipements et licences listés dans ce document sous forme d'un tableau JSON.
-Chaque élément du tableau représente UN équipement physique distinct OU UNE licence logicielle.
+                "content": f"""Tu analyses un document d'achat (devis, bon de commande ou facture).
+Extrais les LIGNES d'équipements et de licences sous forme d'un tableau JSON.
+Chaque élément du tableau = UNE ligne de produit distincte du document.
+
+RÈGLE DE QUANTITÉ (importante) :
+- Une ligne "6x Dell OptiPlex" donne UN SEUL élément avec quantite=6.
+- Ne duplique PAS la ligne : c'est le champ `quantite` qui porte le nombre.
+- Si le document liste des numéros de série individuels (SN001, SN002...), crée alors UN élément par numéro de série, chacun avec quantite=1 et son tag.
 
 CHAMPS À EXTRAIRE pour chaque élément :
 
--- Champs liés au document (communs, répète dans chaque élément) --
+-- Champs du document (communs, répète dans chaque élément) --
 - type_document       : UN SEUL parmi 'devis', 'bon_de_commande', 'facture'
-- numero_document     : numéro du document (ex: FA-2024-001)
+- numero_document     : numéro du document (ex: DV-2024-001, FA-2024-001)
 - numero_de_commande  : numéro de commande si différent du numéro de document
 - date_document       : date du document (YYYY-MM-DD)
-- montant_ttc         : prix unitaire TTC (décimal, uniquement pour les factures)
-- montant_ht          : prix unitaire HT (décimal, uniquement pour les factures)
+- montant_ht          : prix unitaire HT de la ligne (décimal)
+- montant_ttc         : prix unitaire TTC de la ligne (décimal)
 
--- Champs communs à tous les équipements --
+-- Champs de la ligne (cœur) --
 - type_equipement : UN SEUL parmi 'PC FIXE', 'PC PORTABLE', 'ECRAN', 'AUTRE', 'LICENCE'
 - marque          : marque/fabricant (ex: Dell, HP, LG, Microsoft)
-- tag             : numéro de série ou référence individuelle UNIQUE par équipement
+- designation     : libellé complet de la ligne tel qu'écrit (ex: 'Dell OptiPlex 7010, i5, 16 Go')
+- quantite        : nombre d'unités de cette ligne (entier, défaut 1)
 - fournisseur     : nom du fournisseur/vendeur
-- date_achat      : date d'achat (YYYY-MM-DD)
-- fin_garantie    : date de fin de garantie (YYYY-MM-DD)
-- proprietaire    : nom du propriétaire ou utilisateur si mentionné
-- service         : service ou département destinataire si mentionné
-- batiment        : bâtiment ou local destinataire si mentionné
 
--- Champs spécifiques aux ordinateurs (PC FIXE, PC PORTABLE) --
-- ram          : mémoire vive (ex: '8 Go', '16 Go', '32 Go')
-- os           : système d'exploitation (ex: 'Windows 11 Pro', 'Ubuntu 22.04')
-- nom_reseau   : nom d'hôte réseau / hostname si mentionné
-- ip_address   : adresse IP si mentionnée (ex: '192.168.1.10')
-- mac_ethernet : adresse MAC Ethernet si mentionnée (format XX:XX:XX:XX:XX:XX)
-- mac_wifi     : adresse MAC WiFi si mentionnée (format XX:XX:XX:XX:XX:XX)
-- tag_chargeur : référence ou tag du chargeur associé si mentionné
-- watt         : consommation électrique en watts (entier)
-- clef_wifi    : true si une clé WiFi USB est incluse, false sinon, null si non mentionné
-- lecteur_cd   : true si un lecteur CD/DVD est inclus, false sinon, null si non mentionné
-- casque       : true si un casque audio est inclus, false sinon, null si non mentionné
-- absolute_dell: true si Absolute Dell / DDS est mentionné, false sinon, null si non mentionné
-
--- Champs spécifiques aux écrans (ECRAN) --
-- taille : taille en pouces (décimal, ex: 24.0, 27.0)
-
--- Champs spécifiques aux licences logicielles (LICENCE) --
-- type_licence     : type de licence (ex: 'OEM', 'Volume', 'Retail', 'Abonnement')
-- version_logiciel : version du logiciel (ex: 'Microsoft 365', 'Office 2021 Pro')
-- clef_licence     : clé de produit si mentionnée (ex: 'XXXXX-XXXXX-XXXXX-XXXXX-XXXXX')
-- mail_activation  : adresse email d'activation si mentionnée
+-- Champs optionnels (UNIQUEMENT s'ils sont écrits noir sur blanc dans la ligne) --
+- tag             : numéro de série si explicitement listé, sinon null
+- ram             : mémoire vive si indiquée (ex: '8 Go', '16 Go')
+- os              : système d'exploitation si indiqué (ex: 'Windows 11 Pro')
+- taille          : pour un ECRAN, taille en pouces (décimal, ex: 24.0, 27.0)
+- type_licence    : pour une LICENCE (ex: 'OEM', 'Volume', 'Abonnement')
+- version_logiciel: pour une LICENCE (ex: 'Microsoft 365', 'Office 2021 Pro')
 
 RÈGLES STRICTES :
-- Chaque tag ne doit apparaître QU'UNE SEULE fois. Ne duplique jamais un tag.
-- Si le document liste des tags individuels (SN001, SN002...), crée UN élément par tag.
-- Si une ligne indique une quantité sans tags (ex: "6x Dell OptiPlex"), crée EXACTEMENT autant d'éléments que la quantité, chacun avec tag null.
-- Si un champ est commun à tous (fournisseur, date_document...), répète-le dans chaque élément.
-- Mets null pour tout champ absent ou non mentionné. Ne devine pas, n'hallucine pas.
+- Ne renseigne QUE les champs réellement présents. Mets null pour tout le reste.
+- Ne devine pas, n'invente pas, n'hallucine pas (surtout pour tag, ram, os).
+- N'invente jamais d'adresse IP/MAC, de propriétaire, de service ou de garantie : ces informations ne figurent pas sur un document d'achat.
 - Si aucun équipement n'est identifiable, retourne [].
 
 Document :
@@ -130,10 +126,20 @@ Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour.""",
     except (json.JSONDecodeError, AttributeError):
         items = []
 
-    # Deduplicate by tag — keep first occurrence of each non-null tag
+    # Normalize quantite to a positive int (default 1) and dedup by tag —
+    # keeping the first occurrence of each non-null tag. On devis/BC tags are
+    # usually absent, so dedup mostly no-ops; quantite carries the count.
     seen_tags: set[str] = set()
     unique_items = []
     for item in items:
+        if not isinstance(item, dict):
+            continue
+        try:
+            qte = int(item.get("quantite") or 1)
+        except (TypeError, ValueError):
+            qte = 1
+        item["quantite"] = max(1, qte)
+
         tag = item.get("tag")
         if tag and tag in seen_tags:
             continue
@@ -142,10 +148,14 @@ Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour.""",
         unique_items.append(item)
     items = unique_items
 
+    # Completeness is weighted only on the fields a document realistically
+    # contains (CHAMPS_ATTENDUS), so a clean devis scores high instead of being
+    # dragged down by runtime fields the model is no longer asked to fill.
     nb_items = len(items)
-    nb_champs_total = nb_items * len(CHAMPS) if nb_items else len(CHAMPS)
+    nb_champs_total = nb_items * len(CHAMPS_ATTENDUS) if nb_items else len(CHAMPS_ATTENDUS)
     nb_champs_remplis = sum(
-        len([k for k in CHAMPS if item.get(k)]) for item in items
+        len([k for k in CHAMPS_ATTENDUS if item.get(k) not in (None, "")])
+        for item in items
     ) if items else 0
     type_document = items[0].get("type_document") if items else "inconnu"
 

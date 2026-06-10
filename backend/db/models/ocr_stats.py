@@ -1,15 +1,23 @@
 from __future__ import annotations
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 from sqlalchemy import Boolean, Float, Integer, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db.db import Base
+
+if TYPE_CHECKING:
+    from db.models.ocr_result import OcrResult
 
 class OcrStat(Base):
     __tablename__ = "ocr_stats"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    timestamp: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
+    # Callable default: evaluated at INSERT, not at import. Naive UTC to match
+    # the assumption in prune_ocr_stats (compares against a tz-stripped UTC now).
+    timestamp: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
 
     # Performance
     duree_ms: Mapped[int]          # temps de traitement total
@@ -31,3 +39,10 @@ class OcrStat(Base):
 
     #Historique
     resultat_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Détail des champs extraits — une ligne OcrResult par équipement/licence
+    results: Mapped[list["OcrResult"]] = relationship(
+        back_populates="ocr_stat",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

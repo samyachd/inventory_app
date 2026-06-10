@@ -16,6 +16,7 @@ type OrdDraft = {
   _id: string;
   tag: string;
   marque: string;
+  designation: string;
   type_equipement: string;
   os: string;
   ram: string;
@@ -37,6 +38,7 @@ type EcrDraft = {
   _id: string;
   tag: string;
   marque: string;
+  designation: string;
   taille: string;
   fournisseur: string;
   date_achat: string;
@@ -62,7 +64,7 @@ const emptyDoc = (): DocDraft => ({
 });
 
 const emptyOrd = (): OrdDraft => ({
-  _id: uid(), tag: "", marque: "", type_equipement: "PC FIXE",
+  _id: uid(), tag: "", marque: "", designation: "", type_equipement: "PC FIXE",
   os: "", ram: "", fournisseur: "", date_achat: "", fin_garantie: "",
   proprietaire: "", nom_reseau: "",
   mac_ethernet: "", mac_wifi: "", tag_chargeur: "",
@@ -70,7 +72,7 @@ const emptyOrd = (): OrdDraft => ({
 });
 
 const emptyEcr = (): EcrDraft => ({
-  _id: uid(), tag: "", marque: "", taille: "", fournisseur: "",
+  _id: uid(), tag: "", marque: "", designation: "", taille: "", fournisseur: "",
   date_achat: "", fin_garantie: "", proprietaire: "", agent_id: "",
 });
 
@@ -91,33 +93,41 @@ function ocrToRows(items: OcrExtractedData[]): { ords: OrdDraft[]; ecrs: EcrDraf
   const ecrs: EcrDraft[] = [];
 
   for (const ocr of items) {
-    const common = {
-      tag: ocr.tag ?? "",
-      marque: ocr.marque ?? "",
-      fournisseur: ocr.fournisseur ?? "",
-      date_achat: ocr.date_achat ?? "",
-      fin_garantie: ocr.fin_garantie ?? "",
-      proprietaire: ocr.proprietaire ?? "",
-    };
-    if (ocr.type_equipement === "ECRAN") {
-      ecrs.push({
-        ...emptyEcr(), ...common,
-        taille: ocr.taille != null ? String(ocr.taille) : "",
-      });
-    } else {
-      ords.push({
-        ...emptyOrd(), ...common,
-        type_equipement: ocr.type_equipement ?? "PC FIXE",
-        ram: ocr.ram ?? "",
-        os: ocr.os ?? "",
-        nom_reseau: ocr.nom_reseau ?? "",
-        mac_ethernet: ocr.mac_ethernet ?? "",
-        mac_wifi: ocr.mac_wifi ?? "",
-        tag_chargeur: ocr.tag_chargeur ?? "",
-        watt: ocr.watt != null ? String(ocr.watt) : "",
-        lecteur_cd: ocr.lecteur_cd ?? null,
-        absolute_dell: ocr.absolute_dell ?? null,
-      });
+    // Expand a quantity line ("6x Dell OptiPlex") into N editable rows so each
+    // unit can get its own tag/agent during review. The shared tag (if any) is
+    // only kept on the first row to preserve tag uniqueness across the batch.
+    const qty = Math.max(1, Math.round(Number(ocr.quantite ?? 1)) || 1);
+
+    for (let i = 0; i < qty; i++) {
+      const common = {
+        tag: i === 0 ? ocr.tag ?? "" : "",
+        marque: ocr.marque ?? "",
+        designation: ocr.designation ?? "",
+        fournisseur: ocr.fournisseur ?? "",
+        date_achat: ocr.date_achat ?? "",
+        fin_garantie: ocr.fin_garantie ?? "",
+        proprietaire: ocr.proprietaire ?? "",
+      };
+      if (ocr.type_equipement === "ECRAN") {
+        ecrs.push({
+          ...emptyEcr(), ...common,
+          taille: ocr.taille != null ? String(ocr.taille) : "",
+        });
+      } else {
+        ords.push({
+          ...emptyOrd(), ...common,
+          type_equipement: ocr.type_equipement ?? "PC FIXE",
+          ram: ocr.ram ?? "",
+          os: ocr.os ?? "",
+          nom_reseau: ocr.nom_reseau ?? "",
+          mac_ethernet: ocr.mac_ethernet ?? "",
+          mac_wifi: ocr.mac_wifi ?? "",
+          tag_chargeur: ocr.tag_chargeur ?? "",
+          watt: ocr.watt != null ? String(ocr.watt) : "",
+          lecteur_cd: ocr.lecteur_cd ?? null,
+          absolute_dell: ocr.absolute_dell ?? null,
+        });
+      }
     }
   }
 
@@ -186,7 +196,7 @@ function OrdTable({
         <table className="text-xs w-full">
           <thead className="bg-gray-50 text-muted-foreground">
             <tr>
-              {["Tag", "Marque", "Type", "OS", "RAM", "Fournisseur", "Date achat", "Fin garantie", "Agent", ""].map((h) => (
+              {["Tag", "Marque", "Désignation", "Type", "OS", "RAM", "Fournisseur", "Date achat", "Fin garantie", "Agent", ""].map((h) => (
                 <th key={h} className="px-2 py-2 text-left font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -196,6 +206,7 @@ function OrdTable({
               <tr key={r._id} className="hover:bg-gray-50">
                 <TCell><TInput value={r.tag} onChange={(v) => onChange(r._id, "tag", v)} placeholder="PC-001" /></TCell>
                 <TCell><TInput value={r.marque} onChange={(v) => onChange(r._id, "marque", v)} placeholder="Dell" /></TCell>
+                <TCell><TInput value={r.designation} onChange={(v) => onChange(r._id, "designation", v)} placeholder="OptiPlex 7010, i5…" /></TCell>
                 <TCell>
                   <TSelect value={r.type_equipement} onChange={(v) => onChange(r._id, "type_equipement", v)}>
                     {ORD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -246,7 +257,7 @@ function EcrTable({
         <table className="text-xs w-full">
           <thead className="bg-gray-50 text-muted-foreground">
             <tr>
-              {["Tag", "Marque", "Taille (po)", "Fournisseur", "Date achat", "Fin garantie", "Agent", ""].map((h) => (
+              {["Tag", "Marque", "Désignation", "Taille (po)", "Fournisseur", "Date achat", "Fin garantie", "Agent", ""].map((h) => (
                 <th key={h} className="px-2 py-2 text-left font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -256,6 +267,7 @@ function EcrTable({
               <tr key={r._id} className="hover:bg-gray-50">
                 <TCell><TInput value={r.tag} onChange={(v) => onChange(r._id, "tag", v)} placeholder="SCR-001" /></TCell>
                 <TCell><TInput value={r.marque} onChange={(v) => onChange(r._id, "marque", v)} placeholder="LG" /></TCell>
+                <TCell><TInput value={r.designation} onChange={(v) => onChange(r._id, "designation", v)} placeholder="UltraSharp 24…" /></TCell>
                 <TCell><TInput type="number" value={r.taille} onChange={(v) => onChange(r._id, "taille", v)} placeholder="24" /></TCell>
                 <TCell><TInput value={r.fournisseur} onChange={(v) => onChange(r._id, "fournisseur", v)} placeholder="Fournisseur" /></TCell>
                 <TCell><TInput type="date" value={r.date_achat} onChange={(v) => onChange(r._id, "date_achat", v)} /></TCell>

@@ -48,6 +48,8 @@ export interface OcrExtractedData {
   // Common equipment
   type_equipement?: string | null;
   marque?: string | null;
+  designation?: string | null;
+  quantite?: number | null;
   tag?: string | null;
   fournisseur?: string | null;
   date_achat?: string | null;
