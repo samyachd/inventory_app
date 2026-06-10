@@ -1,6 +1,8 @@
 import base64
+import calendar
 import json
 import time
+from datetime import date
 from mistralai.client import Mistral
 import re
 from core.settings import settings
@@ -30,10 +32,59 @@ CHAMPS_LIGNE_CORE = [
 ]
 CHAMPS_OPPORTUNISTES = [
     "ram", "os", "taille", "type_licence", "version_logiciel", "tag",
+    # date_achat + garantie_duree are extracted verbatim when written; fin_garantie
+    # is DERIVED from them in Python (see _fin_garantie), never asked of the LLM.
+    "date_achat", "garantie_duree",
 ]
 
 # Completeness is weighted only on what a document realistically contains.
 CHAMPS_ATTENDUS = CHAMPS_DOCUMENT + CHAMPS_LIGNE_CORE
+
+
+# Matches a written warranty duration like "3 ans", "36 mois", "2 years",
+# "18-month". The LLM supplies this verbatim; we do the date arithmetic here so
+# fin_garantie is never produced by the model (LLMs botch date math).
+_DUREE_RE = re.compile(
+    r"(\d+)[\s-]*(ans?|année?s?|years?|mois|months?)", re.IGNORECASE
+)
+
+
+def _parse_date(s: str | None) -> date | None:
+    if not s:
+        return None
+    try:
+        return date.fromisoformat(str(s)[:10])
+    except ValueError:
+        return None
+
+
+def _ajouter_mois(d: date, mois: int) -> date:
+    """Add `mois` months to d, clamping the day to the target month's last day."""
+    total = d.month - 1 + mois
+    annee = d.year + total // 12
+    mois_final = total % 12 + 1
+    dernier_jour = calendar.monthrange(annee, mois_final)[1]
+    return date(annee, mois_final, min(d.day, dernier_jour))
+
+
+def _fin_garantie(base: str | None, duree: str | None) -> str | None:
+    """fin_garantie = base_date + warranty_duration, as an ISO date string.
+
+    Returns None when the base date is unparseable or no duration was written —
+    we never invent a warranty end. Years/months are normalized to months.
+    """
+    d = _parse_date(base)
+    if d is None or not duree:
+        return None
+    m = _DUREE_RE.search(str(duree))
+    if not m:
+        return None
+    n = int(m.group(1))
+    unite = m.group(2).lower()
+    mois = n * 12 if unite.startswith(("an", "année", "year")) else n
+    if mois <= 0:
+        return None
+    return _ajouter_mois(d, mois).isoformat()
 
 
 async def extraire_document(contenu: bytes, type_mime: str) -> dict:
@@ -100,11 +151,14 @@ CHAMPS À EXTRAIRE pour chaque élément :
 - taille          : pour un ECRAN, taille en pouces (décimal, ex: 24.0, 27.0)
 - type_licence    : pour une LICENCE (ex: 'OEM', 'Volume', 'Abonnement')
 - version_logiciel: pour une LICENCE (ex: 'Microsoft 365', 'Office 2021 Pro')
+- date_achat      : date d'achat si explicitement indiquée (YYYY-MM-DD), sinon null
+- garantie_duree  : DURÉE de garantie telle qu'écrite (ex: '3 ans', '36 mois'), sinon null. Ne calcule PAS de date de fin, donne juste la durée.
 
 RÈGLES STRICTES :
 - Ne renseigne QUE les champs réellement présents. Mets null pour tout le reste.
 - Ne devine pas, n'invente pas, n'hallucine pas (surtout pour tag, ram, os).
-- N'invente jamais d'adresse IP/MAC, de propriétaire, de service ou de garantie : ces informations ne figurent pas sur un document d'achat.
+- N'invente jamais d'adresse IP/MAC, de propriétaire ni de service : ces informations ne figurent pas sur un document d'achat.
+- Pour garantie_duree : recopie la durée seulement si elle est écrite, ne calcule aucune date.
 - Si aucun équipement n'est identifiable, retourne [].
 
 Document :
@@ -139,6 +193,14 @@ Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour.""",
         except (TypeError, ValueError):
             qte = 1
         item["quantite"] = max(1, qte)
+
+        # Derive fin_garantie from the written duration. Base date is the
+        # explicit purchase date if present, else the document date. Stays null
+        # when nothing is written — we never fabricate a warranty end.
+        base = item.get("date_achat") or item.get("date_document")
+        fin = _fin_garantie(base, item.get("garantie_duree"))
+        if fin:
+            item["fin_garantie"] = fin
 
         tag = item.get("tag")
         if tag and tag in seen_tags:

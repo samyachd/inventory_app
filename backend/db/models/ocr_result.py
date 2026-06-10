@@ -66,6 +66,11 @@ class OcrResult(Base):
     quantite: Mapped[int | None] = mapped_column(Integer, nullable=True)
     fournisseur: Mapped[str | None] = mapped_column(String(150), nullable=True)
 
+    # ── Garantie : date_achat + garantie_duree extraits, fin_garantie dérivée ──
+    date_achat: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    garantie_duree: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    fin_garantie: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     # ── Champs opportunistes (présents seulement si écrits sur le document) ──
     tag: Mapped[str | None] = mapped_column(String(100), nullable=True)
     ram: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -91,6 +96,9 @@ class OcrResult(Base):
             designation=_as_str(item.get("designation")),
             quantite=_as_int(item.get("quantite")),
             fournisseur=_as_str(item.get("fournisseur")),
+            date_achat=_as_str(item.get("date_achat")),
+            garantie_duree=_as_str(item.get("garantie_duree")),
+            fin_garantie=_as_str(item.get("fin_garantie")),
             tag=_as_str(item.get("tag")),
             ram=_as_str(item.get("ram")),
             os=_as_str(item.get("os")),

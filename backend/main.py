@@ -1,6 +1,7 @@
 import asyncio
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 from core import settings
@@ -16,8 +17,28 @@ from db.db import engine
 setup_logger()
 
 
+def run_migrations() -> None:
+    """Bring the database schema up to head on boot, so the running code never
+    races ahead of the schema. Uses the same DB as the app (env.py reads
+    settings.DATABASE_URL). Paths are resolved absolutely so it works regardless
+    of the launch CWD."""
+    from alembic.config import Config
+    from alembic import command
+
+    base = Path(__file__).resolve().parent
+    cfg = Config(str(base / "alembic.ini"))
+    cfg.set_main_option("script_location", str(base / "alembic"))
+    command.upgrade(cfg, "head")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    try:
+        run_migrations()
+        logger.info("Migrations Alembic appliquées (upgrade head)")
+    except Exception as e:
+        logger.error(f"Échec des migrations Alembic au démarrage : {e}")
+
     db = SessionLocal()
     try:
         seed_admin(db)

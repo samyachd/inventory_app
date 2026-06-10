@@ -5,8 +5,13 @@ distributor:
   receivers:
     otlp:
       protocols:
+        # Bind to 0.0.0.0, not the default localhost — otherwise the receivers
+        # only listen inside the tempo container and other services (backend)
+        # get "connection refused" on 4317/4318.
         grpc:
+          endpoint: 0.0.0.0:4317
         http:
+          endpoint: 0.0.0.0:4318
 
 storage:
   trace:

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { Fragment, useState, useCallback } from "react";
 import { Upload, Plus, Trash2, Check, AlertTriangle, XCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -196,17 +196,22 @@ function OrdTable({
         <table className="text-xs w-full">
           <thead className="bg-gray-50 text-muted-foreground">
             <tr>
-              {["Tag", "Marque", "Désignation", "Type", "OS", "RAM", "Fournisseur", "Date achat", "Fin garantie", "Agent", ""].map((h) => (
+              {["Tag", "Marque", "Type", "OS", "RAM", "Fournisseur", "Date achat", "Fin garantie", "Agent", ""].map((h) => (
                 <th key={h} className="px-2 py-2 text-left font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r._id} className="hover:bg-gray-50">
+              <Fragment key={r._id}>
+                <tr className="bg-gray-50/70 border-t">
+                  <td colSpan={10} className="px-2 pt-2 pb-1 text-xs font-semibold text-gray-700 whitespace-normal">
+                    {r.designation || <span className="font-normal italic text-muted-foreground">Sans désignation</span>}
+                  </td>
+                </tr>
+              <tr className="hover:bg-gray-50">
                 <TCell><TInput value={r.tag} onChange={(v) => onChange(r._id, "tag", v)} placeholder="PC-001" /></TCell>
                 <TCell><TInput value={r.marque} onChange={(v) => onChange(r._id, "marque", v)} placeholder="Dell" /></TCell>
-                <TCell><TInput value={r.designation} onChange={(v) => onChange(r._id, "designation", v)} placeholder="OptiPlex 7010, i5…" /></TCell>
                 <TCell>
                   <TSelect value={r.type_equipement} onChange={(v) => onChange(r._id, "type_equipement", v)}>
                     {ORD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -229,6 +234,7 @@ function OrdTable({
                   </button>
                 </TCell>
               </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -257,17 +263,22 @@ function EcrTable({
         <table className="text-xs w-full">
           <thead className="bg-gray-50 text-muted-foreground">
             <tr>
-              {["Tag", "Marque", "Désignation", "Taille (po)", "Fournisseur", "Date achat", "Fin garantie", "Agent", ""].map((h) => (
+              {["Tag", "Marque", "Taille (po)", "Fournisseur", "Date achat", "Fin garantie", "Agent", ""].map((h) => (
                 <th key={h} className="px-2 py-2 text-left font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r._id} className="hover:bg-gray-50">
+              <Fragment key={r._id}>
+                <tr className="bg-gray-50/70 border-t">
+                  <td colSpan={8} className="px-2 pt-2 pb-1 text-xs font-semibold text-gray-700 whitespace-normal">
+                    {r.designation || <span className="font-normal italic text-muted-foreground">Sans désignation</span>}
+                  </td>
+                </tr>
+              <tr className="hover:bg-gray-50">
                 <TCell><TInput value={r.tag} onChange={(v) => onChange(r._id, "tag", v)} placeholder="SCR-001" /></TCell>
                 <TCell><TInput value={r.marque} onChange={(v) => onChange(r._id, "marque", v)} placeholder="LG" /></TCell>
-                <TCell><TInput value={r.designation} onChange={(v) => onChange(r._id, "designation", v)} placeholder="UltraSharp 24…" /></TCell>
                 <TCell><TInput type="number" value={r.taille} onChange={(v) => onChange(r._id, "taille", v)} placeholder="24" /></TCell>
                 <TCell><TInput value={r.fournisseur} onChange={(v) => onChange(r._id, "fournisseur", v)} placeholder="Fournisseur" /></TCell>
                 <TCell><TInput type="date" value={r.date_achat} onChange={(v) => onChange(r._id, "date_achat", v)} /></TCell>
@@ -284,6 +295,7 @@ function EcrTable({
                   </button>
                 </TCell>
               </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>
