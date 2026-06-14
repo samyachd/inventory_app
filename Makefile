@@ -4,8 +4,6 @@
         build-frontend \
         migrate-prod seed-prod db-reset-prod db-shell-prod convert-prod clean-prod
 
-COMPOSE_PROD = docker compose -f docker-compose.yml -f docker-compose.prod.yml
-
 help:  ## Affiche la liste des commandes disponibles
 	@echo ""
 	@echo "Commandes disponibles :"
@@ -18,14 +16,6 @@ dev:  ## Démarre la stack en mode dev (avec hot-reload)
 
 devrun:
 	docker compose up
-
-prod:  ## Démarre la stack en mode prod
-	$(COMPOSE_PROD) up -d
-
-deploy:  ## [PROD] git pull + rebuild images + redémarre
-	git pull
-	$(COMPOSE_PROD) build --no-cache
-	$(COMPOSE_PROD) up -d
 
 down:  ## Arrête tous les conteneurs
 	docker compose down
@@ -63,23 +53,6 @@ db-reset:  ## ⚠️  Efface la DB, recrée le schéma et re-seed
 db-shell:  ## Ouvre un shell psql dans la DB
 	docker compose exec db sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
 
-migrate-prod:  ## [PROD] Applique les migrations en attente
-	$(COMPOSE_PROD) exec backend uv run alembic upgrade head
-
-seed-prod:  ## [PROD] Remplit la DB (prod)
-	$(COMPOSE_PROD) exec backend uv run python -m db.seed
-
-db-reset-prod:  ## [PROD] ⚠️  Efface la DB, recrée le schéma et re-seed
-	$(COMPOSE_PROD) down -v
-	$(COMPOSE_PROD) up -d
-	@echo "Attente du démarrage de Postgres..."
-	@sleep 5
-	$(COMPOSE_PROD) exec backend uv run alembic upgrade head
-	$(COMPOSE_PROD) exec backend uv run python -m db.seed
-
-db-shell-prod:  ## [PROD] Ouvre un shell psql dans la DB (prod)
-	$(COMPOSE_PROD) exec db sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
-
 test:  ## Lance les tests pytest dans le conteneur backend
 	docker compose exec backend uv run pytest
 
@@ -91,12 +64,6 @@ convert:  ## Convertit Excel → JSON brut (dev)
 
 clean:  ## Nettoie et normalise le JSON brut (dev)
 	docker compose exec -u root backend uv run python -m utils.clean_to_models
-
-convert-prod:  ## [PROD] Convertit Excel → JSON brut
-	$(COMPOSE_PROD) exec -u root backend uv run python -m utils.convert_excel
-
-clean-prod:  ## [PROD] Nettoie et normalise le JSON brut
-	$(COMPOSE_PROD) exec -u root backend uv run python -m utils.clean_to_models
 
 build-frontend:  ## Build le frontend pour la prod (local, sans Docker)
 	cd frontend && npm run build

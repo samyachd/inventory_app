@@ -138,11 +138,6 @@ services:
           cpus: '0.5'
           memory: 256M
 
-  # ─────────────────────────────────────────────────────────────────
-  # Basic-auth in front of Loki. Promtail and Grafana point at this
-  # service ("loki-proxy:3100"), not the raw loki container, so there
-  # is no unauthenticated path to the log store on the docker network.
-  # ─────────────────────────────────────────────────────────────────
   loki-proxy:
     image: nginx:alpine
     volumes:

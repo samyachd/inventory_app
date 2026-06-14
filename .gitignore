@@ -13,7 +13,6 @@ env/
 .env
 .env.local
 /.env/
- !frontend/.env
 
 # Bytecode Python
 __pycache__/
@@ -118,6 +117,10 @@ files_test/
 !.env.prod.example
 !.env.development.example
 !.env.production.example
+
+# Frontend env files contain no secrets — safe to commit
+!frontend/.env.development
+!frontend/.env.production
 
 # Prometheus web auth config contains a bcrypt hash — keep out of git
 prometheus-web.yml
