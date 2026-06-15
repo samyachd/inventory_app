@@ -1,18 +1,39 @@
 groups:
   - name: mairie_alerts
     rules:
-      - alert: TempsReponseEleve
-        expr: http_request_duration_seconds_p95 > 2
+      # Backend unreachable: Prometheus can't scrape it at all.
+      # This is the single most important alert — it catches a crashed
+      # or unresponsive API before users do.
+      - alert: BackendDown
+        expr: up{job="mairie_backend"} == 0
         for: 1m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Temps de réponse élevé"
-
-      - alert: TauxErreurEleve
-        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
-        for: 2m
         labels:
           severity: critical
         annotations:
-          summary: "Taux d'erreur > 10%"
+          summary: "Backend injoignable"
+          description: "Prometheus ne parvient plus à scraper le backend depuis 1 min."
+
+      # p95 latency over the histogram exported by
+      # prometheus-fastapi-instrumentator (http_request_duration_seconds_bucket).
+      # There is no _p95 metric — it must be computed with histogram_quantile.
+      - alert: TempsReponseEleve
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Temps de réponse élevé (p95 > 2s)"
+          description: "p95 = {{ $value | printf \"%.2f\" }}s sur les 5 dernières minutes."
+
+      # Share of 5xx responses. The instrumentator labels status as a class
+      # ("2xx", "4xx", "5xx"), so we match status="5xx", not "5..".
+      - alert: TauxErreurEleve
+        expr: |
+          sum(rate(http_requests_total{status="5xx"}[5m]))
+          / clamp_min(sum(rate(http_requests_total[5m])), 1e-9) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taux d'erreur 5xx > 10%"
+          description: "{{ $value | humanizePercentage }} des requêtes renvoient une 5xx."

@@ -1,0 +1,37 @@
+# alertmanager.yml — routes Prometheus alerts to email over SMTP.
+# Copy to alertmanager.yml (gitignored — it holds the SMTP password) and fill in
+# the values for your mail server. Alertmanager does NOT expand env vars, so the
+# real secret lives in this file on the host, like prometheus-web.yml.
+#
+#   cp alertmanager.yml.example alertmanager.yml   # then edit the smtp_* / to: lines
+#
+# After editing, validate it:
+#   docker run --rm -v "$PWD/alertmanager.yml:/c.yml" prom/alertmanager amtool check-config /c.yml
+
+global:
+  resolve_timeout: 5m
+  # SMTP relay. For Gmail use smtp.gmail.com:587 with an app password.
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alertes-mairie@example.com'
+  smtp_auth_username: 'alertes-mairie@example.com'
+  smtp_auth_password: 'CHANGE-ME-smtp-password'
+  smtp_require_tls: true
+
+route:
+  receiver: 'equipe-mairie'
+  group_by: ['alertname']
+  group_wait: 30s        # wait to bundle alerts that fire close together
+  group_interval: 5m
+  repeat_interval: 4h    # re-send an unresolved alert at most every 4h
+  routes:
+    # Critical alerts are re-sent more aggressively.
+    - matchers:
+        - severity = "critical"
+      receiver: 'equipe-mairie'
+      repeat_interval: 1h
+
+receivers:
+  - name: 'equipe-mairie'
+    email_configs:
+      - to: 'informatique@mairie.example.fr'
+        send_resolved: true   # also email when an alert clears

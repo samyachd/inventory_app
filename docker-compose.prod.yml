@@ -11,6 +11,8 @@
 #                                (generate with: htpasswd -nbB user password)
 #   /prometheus-web.yml        — bcrypt entry for the Prometheus basic-auth user
 #                                (copy from prometheus-web.yml.example and fill in hash)
+#   /alertmanager.yml          — SMTP settings + recipients for email alerts
+#                                (copy from alertmanager.yml.example and fill in)
 
 services:
   db:
@@ -91,17 +93,40 @@ services:
     volumes:
       - ./prometheus.prod.yml:/etc/prometheus/prometheus.yml
       - ./prometheus-web.yml:/etc/prometheus/web.yml:ro
+      # Alert rules referenced by rule_files in prometheus.prod.yml.
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --web.config.file=/etc/prometheus/web.yml
       - --storage.tsdb.path=/prometheus
+    depends_on:
+      - alertmanager
     restart: unless-stopped
     deploy:
       resources:
         limits:
           cpus: '0.5'
           memory: 512M
+
+  # Routes firing alerts from Prometheus to email over SMTP.
+  # Config (with the SMTP password) lives in alertmanager.yml on the host —
+  # copy it from alertmanager.yml.example. Not exposed to the host: Prometheus
+  # reaches it over the compose network at alertmanager:9093.
+  alertmanager:
+    image: prom/alertmanager:latest
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
 
   grafana:
     env_file:
@@ -176,5 +201,6 @@ services:
 
 volumes:
   prometheus_data:
+  alertmanager_data:
   loki_data:
   tempo_data:

@@ -122,6 +122,9 @@ files_test/
 # Prometheus web auth config contains a bcrypt hash — keep out of git
 prometheus-web.yml
 
+# Alertmanager config contains the SMTP password — keep out of git
+alertmanager.yml
+
 # ============================================
 # ÉDITEURS & IDE
 # ============================================

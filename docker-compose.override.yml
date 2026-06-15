@@ -40,6 +40,21 @@ services:
   prometheus:
     ports:
       - "9090:9090"
+    volumes:
+      # Mount the rule file referenced by rule_files (base compose only mounts
+      # prometheus.yml, so without this the alerts never load in dev).
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+
+  # Local Alertmanager for demoing email alerts. Reads alertmanager.yml
+  # (gitignored — holds the Gmail App Password). UI on http://localhost:9093.
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
 
   grafana:
     ports:

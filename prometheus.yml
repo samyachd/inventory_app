@@ -4,6 +4,14 @@ global:
 rule_files:
   - "alerts.yml"
 
+# Send firing alerts to Alertmanager (added to the dev stack via
+# docker-compose.override.yml). Harmless if alertmanager isn't running —
+# Prometheus just logs that it can't reach it.
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 scrape_configs:
   - job_name: "mairie_backend"
     scrape_interval: 5s

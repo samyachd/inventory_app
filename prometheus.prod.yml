@@ -4,6 +4,13 @@ global:
 rule_files:
   - "alerts.yml"
 
+# Send firing alerts to Alertmanager (defined in docker-compose.prod.yml),
+# which routes them to email over SMTP.
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 scrape_configs:
   - job_name: "mairie_backend"
     static_configs:
