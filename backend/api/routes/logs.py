@@ -1,6 +1,6 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import IntegrityError
 from db.session import get_db
 from core.dependencies import require_role
@@ -54,6 +54,7 @@ def get_ocr_stats(
 ):
     return (
         db.query(OcrStat)
+        .options(selectinload(OcrStat.results))
         .order_by(OcrStat.timestamp.desc())
         .offset(offset)
         .limit(limit)

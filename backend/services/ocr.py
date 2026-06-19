@@ -114,11 +114,12 @@ async def extraire_document(contenu: bytes, type_mime: str) -> dict:
 
     debut_extraction = time.time()
     extraction = await client.chat.complete_async(
-        model="mistral-small-latest",
-        messages=[
-            {
-                "role": "user",
-                "content": f"""Tu analyses un document d'achat (devis, bon de commande ou facture).
+    model="mistral-small-latest",
+    temperature=0.2,
+    messages=[
+        {
+            "role": "system",
+            "content": """Tu analyses un document d'achat (devis, bon de commande ou facture).
 Extrais les LIGNES d'équipements et de licences sous forme d'un tableau JSON.
 Chaque élément du tableau = UNE ligne de produit distincte du document.
 
@@ -161,13 +162,15 @@ RÈGLES STRICTES :
 - Pour garantie_duree : recopie la durée seulement si elle est écrite, ne calcule aucune date.
 - Si aucun équipement n'est identifiable, retourne [].
 
-Document :
-{texte}
-
 Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour.""",
-            }
-        ],
+        },
+        {
+            "role": "user",
+            "content": f"Document :\n{texte}",   # ← le document seul, saut de ligne en \n
+        },
+      ],
     )
+
     duree_extraction_ms = int((time.time() - debut_extraction) * 1000)
 
     try:

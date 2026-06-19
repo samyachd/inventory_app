@@ -1,14 +1,19 @@
-.PHONY: help dev prod deploy down restart logs logs-backend logs-frontend \
-        migration migrate seed db-reset db-shell \
-        backend-shell test convert clean \
-        build-frontend \
-        migrate-prod seed-prod db-reset-prod db-shell-prod convert-prod clean-prod
+.PHONY: help dev prod deploy down restart logs status \
+        migration migrate seed db-reset db-shell backup \
+        backend-shell test lint convert clean \
+        build-frontend export-ocr
 
-COMPOSE_PROD = docker compose -f docker-compose.yml -f docker-compose.prod.yml
+# Usage: make <target> ou ENV=prod make <target>
+ENV ?= dev
+ifeq ($(ENV),prod)
+  DC = docker compose -f docker-compose.yml -f docker-compose.prod.yml
+else
+  DC = docker compose
+endif
 
 help:  ## Affiche la liste des commandes disponibles
 	@echo ""
-	@echo "Commandes disponibles :"
+	@echo "Commandes disponibles (ENV=$(ENV)) :"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
@@ -16,90 +21,73 @@ help:  ## Affiche la liste des commandes disponibles
 dev:  ## Démarre la stack en mode dev (avec hot-reload)
 	docker compose up --build
 
-devrun:
-	docker compose up
-
 prod:  ## Démarre la stack en mode prod
-	$(COMPOSE_PROD) up -d
+	$(DC) up -d
 
 deploy:  ## [PROD] git pull + rebuild images + redémarre
 	git pull
-	$(COMPOSE_PROD) build --no-cache
-	$(COMPOSE_PROD) up -d
+	$(DC) build --no-cache
+	$(DC) up -d
 
 down:  ## Arrête tous les conteneurs
-	docker compose down
+	$(DC) down
 
 restart:  ## Redémarre la stack (down + up)
-	docker compose down
-	docker compose up --build -d
+	$(DC) down
+	$(DC) up --build -d
 
-logs:  ## Suit les logs de tous les services
-	docker compose logs -f
+logs:  ## Suit les logs (usage : make logs ou make logs s=backend)
+	$(DC) logs -f $(s)
 
-logs-backend:  ## Suit les logs du backend uniquement
-	docker compose logs -f backend
-
-logs-frontend:  ## Suit les logs du frontend uniquement
-	docker compose logs -f frontend
-
-migration:  ## Génère une nouvelle migration Alembic (usage : make migration msg="ma migration")
-	docker compose exec backend uv run alembic revision --autogenerate -m "$(msg)"
+migration:  ## Génère une migration Alembic (usage : make migration msg="...")
+	$(DC) exec backend uv run alembic revision --autogenerate -m "$(msg)"
 
 migrate:  ## Applique les migrations en attente
-	docker compose exec backend uv run alembic upgrade head
+	$(DC) exec backend uv run alembic upgrade head
 
 seed:  ## Remplit la DB avec des données de test
-	docker compose exec backend uv run python -m db.seed
+	$(DC) exec backend uv run python -m db.seed
 
-db-reset:  ## ⚠️  Efface la DB, recrée le schéma et re-seed
-	docker compose down -v
-	docker compose up -d
+db-reset:  ## ⚠️  Backup + efface la DB, recrée le schéma et re-seed
+	@$(MAKE) backup
+	$(DC) down -v
+	$(DC) up -d
 	@echo "Attente du démarrage de Postgres..."
 	@sleep 5
-	docker compose exec backend uv run alembic upgrade head
-	docker compose exec backend uv run python -m db.seed
+	$(DC) exec backend uv run alembic upgrade head
+	$(DC) exec backend uv run python -m db.seed
 
 db-shell:  ## Ouvre un shell psql dans la DB
-	docker compose exec db sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
+	$(DC) exec db sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
 
-migrate-prod:  ## [PROD] Applique les migrations en attente
-	$(COMPOSE_PROD) exec backend uv run alembic upgrade head
-
-seed-prod:  ## [PROD] Remplit la DB (prod)
-	$(COMPOSE_PROD) exec backend uv run python -m db.seed
-
-db-reset-prod:  ## [PROD] ⚠️  Efface la DB, recrée le schéma et re-seed
-	$(COMPOSE_PROD) down -v
-	$(COMPOSE_PROD) up -d
-	@echo "Attente du démarrage de Postgres..."
-	@sleep 5
-	$(COMPOSE_PROD) exec backend uv run alembic upgrade head
-	$(COMPOSE_PROD) exec backend uv run python -m db.seed
-
-db-shell-prod:  ## [PROD] Ouvre un shell psql dans la DB (prod)
-	$(COMPOSE_PROD) exec db sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
-
-test:  ## Lance les tests pytest dans le conteneur backend
-	docker compose exec backend uv run pytest
+test:  ## Lance les tests pytest
+	$(DC) exec backend uv run pytest
 
 backend-shell:  ## Ouvre un shell bash dans le conteneur backend
-	docker compose exec backend bash
+	$(DC) exec backend bash
 
-convert:  ## Convertit Excel → JSON brut (dev)
-	docker compose exec -u root backend uv run python -m utils.convert_excel
+convert:  ## Convertit Excel → JSON brut
+	$(DC) exec -u root backend uv run python -m utils.convert_excel
 
-clean:  ## Nettoie et normalise le JSON brut (dev)
-	docker compose exec -u root backend uv run python -m utils.clean_to_models
-
-convert-prod:  ## [PROD] Convertit Excel → JSON brut
-	$(COMPOSE_PROD) exec -u root backend uv run python -m utils.convert_excel
-
-clean-prod:  ## [PROD] Nettoie et normalise le JSON brut
-	$(COMPOSE_PROD) exec -u root backend uv run python -m utils.clean_to_models
+clean:  ## Nettoie et normalise le JSON brut
+	$(DC) exec -u root backend uv run python -m utils.clean_to_models
 
 build-frontend:  ## Build le frontend pour la prod (local, sans Docker)
 	cd frontend && npm run build
 
-# Cible par défaut (quand on tape juste "make")
+status:  ## Affiche l'état des conteneurs
+	$(DC) ps
+
+backup:  ## Sauvegarde la DB en SQL (services/)
+	@mkdir -p services
+	$(DC) exec db sh -c 'pg_dump -U $$POSTGRES_USER -d $$POSTGRES_DB' > services/backup_$$(date +%Y%m%d_%H%M%S).sql
+	@echo "Backup sauvegardé dans services/"
+
+lint:  ## Lint le backend avec ruff
+	$(DC) exec backend uv run ruff check .
+
+export-ocr:  ## Exporte les résultats OCR en JSON (data/ocr_results/)
+	@mkdir -p data/ocr_results
+	$(DC) exec -T backend uv run python -m services.export_ocr_results > data/ocr_results/ocr_results_$$(date +%Y%m%d_%H%M%S).json
+
 .DEFAULT_GOAL := help

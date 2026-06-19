@@ -14,6 +14,38 @@ class LogRead(BaseModel):
     detail: str | None
 
 
+class OcrResultRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ocr_stat_id: int
+    created_at: datetime
+
+    type_document: str | None
+    numero_document: str | None
+    numero_de_commande: str | None
+    date_document: str | None
+    montant_ht: float | None
+    montant_ttc: float | None
+
+    type_equipement: str | None
+    marque: str | None
+    designation: str | None
+    quantite: int | None
+    fournisseur: str | None
+
+    date_achat: str | None
+    garantie_duree: str | None
+    fin_garantie: str | None
+
+    tag: str | None
+    ram: str | None
+    os: str | None
+    taille: float | None
+    type_licence: str | None
+    version_logiciel: str | None
+
+
 class OcrStatRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -33,3 +65,4 @@ class OcrStatRead(BaseModel):
     duree_extraction_ms: int
     succes: bool
     resultat_json: str | None
+    results: list[OcrResultRead] = []
