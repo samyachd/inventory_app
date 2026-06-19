@@ -27,13 +27,14 @@ groups:
 
       # Share of 5xx responses. The instrumentator labels status as a class
       # ("2xx", "4xx", "5xx"), so we match status="5xx", not "5..".
+      # clamp_min guards against divide-by-zero when there is no traffic.
       - alert: TauxErreurEleve
         expr: |
           sum(rate(http_requests_total{status="5xx"}[5m]))
-          / clamp_min(sum(rate(http_requests_total[5m])), 1e-9) > 0.1
+          / clamp_min(sum(rate(http_requests_total[5m])), 1e-9) > 0.05
         for: 5m
         labels:
           severity: critical
         annotations:
-          summary: "Taux d'erreur 5xx > 10%"
-          description: "{{ $value | humanizePercentage }} des requêtes renvoient une 5xx."
+          summary: "Taux d'erreur 5xx > 5%"
+          description: "{{ $value | humanizePercentage }} des requêtes renvoient une 5xx sur les 5 dernières minutes."
