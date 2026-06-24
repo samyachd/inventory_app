@@ -1,0 +1,27 @@
+# LOCAL DEMO config — gitignored (holds the Gmail App Password).
+# Sends alert emails from your Gmail to your Gmail via Google's SMTP.
+#
+# >>> ONE THING TO DO: replace PASTE_16_CHAR_APP_PASSWORD_HERE below. <<<
+# Generate it at https://myaccount.google.com/apppasswords
+# (requires 2-Step Verification ON). Paste the 16 chars WITHOUT spaces.
+
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'achd.samy@gmail.com'
+  smtp_auth_username: 'achd.samy@gmail.com'
+  smtp_auth_password: 'rhsmcjhlnuczxztl'
+  smtp_require_tls: true
+
+route:
+  receiver: 'demo'
+  group_by: ['alertname']
+  group_wait: 15s        # short, so the demo email arrives quickly
+  group_interval: 5m
+  repeat_interval: 1h
+
+receivers:
+  - name: 'demo'
+    email_configs:
+      - to: 'achd.samy@gmail.com'
+        send_resolved: true
